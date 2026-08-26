@@ -1,0 +1,16 @@
+{
+  "name": "@wentian/infrastructure",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1116.0",
+    "@wentian/application": "workspace:*",
+    "@wentian/domain": "workspace:*",
+    "pg": "^8.23.0",
+    "tldts": "7.4.10"
+  }
+}

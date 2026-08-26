@@ -1,0 +1,14 @@
+{
+  "name": "@wentian/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@wentian/application": "workspace:*",
+    "@wentian/consumer-doubao-web": "workspace:*",
+    "@wentian/consumer-qianwen-web": "workspace:*",
+    "@wentian/contracts": "workspace:*",
+    "@wentian/domain": "workspace:*",
+    "@wentian/infrastructure": "workspace:*"
+  }
+}

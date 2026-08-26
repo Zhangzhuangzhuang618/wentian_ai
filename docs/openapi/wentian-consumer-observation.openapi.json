@@ -1,0 +1,820 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "问天消费端观察 API 草案",
+    "version": "wentian-consumer-observation-http@0-draft",
+    "description": "不可执行的契约草案。它不代表正式路由已经实现、注册或获准处理真实观察数据。"
+  },
+  "x-wentian-contract-version": "wentian-consumer-observation-http@0-draft",
+  "x-wentian-executable": false,
+  "x-wentian-production-enabled": false,
+  "x-wentian-unresolved-gates": [
+    "surface_terms_and_regions",
+    "identity_and_csrf",
+    "rate_limits",
+    "signed_capture_token",
+    "transactional_persistence",
+    "audit_and_privacy_purge"
+  ],
+  "tags": [
+    {
+      "name": "Consumer observations",
+      "description": "用户在场、人工确认的消费端页面可见观察；不代表隐藏搜索候选。"
+    }
+  ],
+  "paths": {
+    "/ai-visibility/consumer-observations": {
+      "post": {
+        "operationId": "createConsumerObservation",
+        "tags": ["Consumer observations"],
+        "summary": "创建消费端观察运行和逐题任务",
+        "x-wentian-executable": false,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConsumerObservationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "草案中的运行和逐题任务已创建。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateConsumerObservationResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "正式错误结构尚未发布。"
+          }
+        }
+      }
+    },
+    "/ai-visibility/consumer-observations/tasks/{id}/claim": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/TaskId"
+        }
+      ],
+      "post": {
+        "operationId": "claimConsumerObservationTask",
+        "tags": ["Consumer observations"],
+        "summary": "领取观察任务并取得短期一次性 Capture Token",
+        "x-wentian-executable": false,
+        "responses": {
+          "200": {
+            "description": "任务进入 capturing。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimConsumerObservationTaskResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "正式错误结构尚未发布。"
+          }
+        }
+      }
+    },
+    "/ai-visibility/consumer-observations/tasks/{id}/captures": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/TaskId"
+        }
+      ],
+      "post": {
+        "operationId": "submitConsumerObservationCapture",
+        "tags": ["Consumer observations"],
+        "summary": "提交白名单观察元数据、可见内容和截图",
+        "x-wentian-executable": false,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CaptureToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["metadata", "screenshot"],
+                "properties": {
+                  "metadata": {
+                    "$ref": "#/components/schemas/CaptureSubmissionMetadata"
+                  },
+                  "screenshot": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "用户预览确认过的当前可见页面 PNG 截图。"
+                  },
+                  "sanitized_dom": {
+                    "type": "string",
+                    "description": "可选的已脱敏可见 DOM 片段；不得包含 Cookie、Token 或隐藏响应。"
+                  }
+                }
+              },
+              "encoding": {
+                "metadata": {
+                  "contentType": "application/json"
+                },
+                "screenshot": {
+                  "contentType": "image/png"
+                },
+                "sanitized_dom": {
+                  "contentType": "text/plain; charset=utf-8"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "观察包暂存并进入 needs_review；尚不进入指标。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitConsumerCaptureResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "正式错误结构尚未发布。"
+          }
+        }
+      }
+    },
+    "/ai-visibility/consumer-observations/tasks/{id}/confirm": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/TaskId"
+        }
+      ],
+      "post": {
+        "operationId": "confirmConsumerObservation",
+        "tags": ["Consumer observations"],
+        "summary": "确认观察包并生成不可变响应",
+        "x-wentian-executable": false,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmConsumerObservationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "任务已确认，返回独立的确认状态和证据等级。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmConsumerObservationResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "正式错误结构尚未发布。"
+          }
+        }
+      }
+    },
+    "/ai-visibility/consumer-observations/tasks/{id}/reject": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/TaskId"
+        }
+      ],
+      "post": {
+        "operationId": "rejectConsumerObservation",
+        "tags": ["Consumer observations"],
+        "summary": "拒绝观察包并触发受控隐私清除",
+        "x-wentian-executable": false,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectConsumerObservationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "任务已拒绝；响应不产生证据等级。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectConsumerObservationResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "正式错误结构尚未发布。"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "TaskId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "CaptureToken": {
+        "name": "X-Wentian-Capture-Token",
+        "in": "header",
+        "required": true,
+        "description": "只允许提交当前任务观察包的短期一次性凭据。",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "schemas": {
+      "ConsumerSessionConditions": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "search_mode",
+          "is_new_conversation",
+          "is_logged_in",
+          "memory_enabled",
+          "personalization_enabled",
+          "locale",
+          "region"
+        ],
+        "properties": {
+          "search_mode": {
+            "type": "string",
+            "enum": ["enabled", "disabled", "unknown"]
+          },
+          "is_new_conversation": {
+            "type": "boolean"
+          },
+          "is_logged_in": {
+            "type": "boolean"
+          },
+          "memory_enabled": {
+            "type": ["boolean", "null"]
+          },
+          "personalization_enabled": {
+            "type": ["boolean", "null"]
+          },
+          "locale": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 16
+          },
+          "region": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 120
+          }
+        }
+      },
+      "CreateConsumerObservationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope_id",
+          "query_set_snapshot_id",
+          "surface_code",
+          "collection_method",
+          "experiment_kind",
+          "sample_count",
+          "session_conditions"
+        ],
+        "properties": {
+          "scope_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "query_set_snapshot_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "surface_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "collection_method": {
+            "type": "string",
+            "enum": ["browser_assisted", "manual_import"]
+          },
+          "experiment_kind": {
+            "type": "string",
+            "enum": ["natural_answer", "source_nomination"]
+          },
+          "sample_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "session_conditions": {
+            "$ref": "#/components/schemas/ConsumerSessionConditions"
+          },
+          "paired_run_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          }
+        }
+      },
+      "ConsumerObservationRunSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "scope_id",
+          "query_set_snapshot_id",
+          "retrieval_mode",
+          "collection_method",
+          "experiment_kind",
+          "requested_sample_count"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scope_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "query_set_snapshot_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "retrieval_mode": {
+            "type": "string",
+            "const": "web_observed"
+          },
+          "collection_method": {
+            "type": "string",
+            "enum": ["browser_assisted", "manual_import"]
+          },
+          "experiment_kind": {
+            "type": "string",
+            "enum": ["natural_answer", "source_nomination"]
+          },
+          "requested_sample_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          }
+        }
+      },
+      "ConsumerObservationTaskSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "task_version",
+          "status",
+          "query_snapshot_item_id",
+          "sample_index"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "task_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "const": "waiting_user"
+          },
+          "query_snapshot_item_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sample_index": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "CreateConsumerObservationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["contract_version", "run", "tasks"],
+        "properties": {
+          "contract_version": {
+            "type": "string",
+            "const": "wentian-consumer-observation-http@0-draft"
+          },
+          "run": {
+            "$ref": "#/components/schemas/ConsumerObservationRunSummary"
+          },
+          "tasks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/ConsumerObservationTaskSummary"
+            }
+          }
+        }
+      },
+      "ClaimConsumerObservationTaskResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "contract_version",
+          "task_id",
+          "task_version",
+          "status",
+          "scope_id",
+          "query_snapshot_item_id",
+          "query_text",
+          "surface_code",
+          "collection_method",
+          "session_conditions",
+          "capture_token",
+          "token_expires_at"
+        ],
+        "properties": {
+          "contract_version": {
+            "type": "string",
+            "const": "wentian-consumer-observation-http@0-draft"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "task_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "const": "capturing"
+          },
+          "scope_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "query_snapshot_item_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "query_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "surface_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "collection_method": {
+            "type": "string",
+            "enum": ["browser_assisted", "manual_import"]
+          },
+          "session_conditions": {
+            "$ref": "#/components/schemas/ConsumerSessionConditions"
+          },
+          "capture_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "token_expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "VisibleCitation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "position"],
+        "dependentRequired": {
+          "observed_url": ["resolution"],
+          "resolution": ["observed_url"]
+        },
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https?://"
+          },
+          "label": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "observed_url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https?://"
+          },
+          "resolution": {
+            "type": "string",
+            "const": "known_redirect_target"
+          }
+        }
+      },
+      "VisibleObservationMetadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "product_label",
+          "surface_model_label",
+          "search_mode",
+          "is_new_conversation",
+          "is_logged_in",
+          "memory_enabled",
+          "personalization_enabled",
+          "locale",
+          "region",
+          "observed_at"
+        ],
+        "properties": {
+          "product_label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "surface_model_label": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "search_mode": {
+            "type": "string",
+            "enum": ["enabled", "disabled", "unknown"]
+          },
+          "is_new_conversation": {
+            "type": "boolean"
+          },
+          "is_logged_in": {
+            "type": "boolean"
+          },
+          "memory_enabled": {
+            "type": ["boolean", "null"]
+          },
+          "personalization_enabled": {
+            "type": ["boolean", "null"]
+          },
+          "locale": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 16
+          },
+          "region": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CaptureSubmissionMetadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_version",
+          "answer_text",
+          "visible_citations",
+          "visible_metadata",
+          "adapter_version",
+          "collection_method"
+        ],
+        "properties": {
+          "task_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "answer_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000
+          },
+          "visible_citations": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/VisibleCitation"
+            }
+          },
+          "visible_metadata": {
+            "$ref": "#/components/schemas/VisibleObservationMetadata"
+          },
+          "adapter_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "collection_method": {
+            "type": "string",
+            "enum": ["browser_assisted", "manual_import"]
+          }
+        }
+      },
+      "SubmitConsumerCaptureResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "contract_version",
+          "task_id",
+          "task_version",
+          "status",
+          "verification_status",
+          "evidence_grade",
+          "capture_artifact_id"
+        ],
+        "properties": {
+          "contract_version": {
+            "type": "string",
+            "const": "wentian-consumer-observation-http@0-draft"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "task_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "const": "needs_review"
+          },
+          "verification_status": {
+            "type": "string",
+            "const": "needs_review"
+          },
+          "evidence_grade": {
+            "type": "null"
+          },
+          "capture_artifact_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ConfirmConsumerObservationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_version"],
+        "properties": {
+          "task_version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "ConfirmConsumerObservationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "contract_version",
+          "task_id",
+          "task_version",
+          "status",
+          "verification_status",
+          "evidence_grade",
+          "confirmed_response_id"
+        ],
+        "properties": {
+          "contract_version": {
+            "type": "string",
+            "const": "wentian-consumer-observation-http@0-draft"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "task_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "const": "confirmed"
+          },
+          "verification_status": {
+            "type": "string",
+            "const": "confirmed"
+          },
+          "evidence_grade": {
+            "type": "string",
+            "enum": ["web_confirmed_capture", "web_confirmed_manual"]
+          },
+          "confirmed_response_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "RejectConsumerObservationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_version", "rejection_reason"],
+        "properties": {
+          "task_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "rejection_reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        }
+      },
+      "RejectConsumerObservationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "contract_version",
+          "task_id",
+          "task_version",
+          "status",
+          "verification_status",
+          "evidence_grade"
+        ],
+        "properties": {
+          "contract_version": {
+            "type": "string",
+            "const": "wentian-consumer-observation-http@0-draft"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "task_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "const": "rejected"
+          },
+          "verification_status": {
+            "type": "string",
+            "const": "rejected"
+          },
+          "evidence_grade": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  }
+}

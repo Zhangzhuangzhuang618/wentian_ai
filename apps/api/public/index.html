@@ -1,0 +1,1101 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101426" />
+    <title>问天 AI 信源探测系统</title>
+    <meta
+      name="description"
+      content="观察AI回答中的可见引用，并与AI自述的信源推荐倾向进行对照。"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <datalist id="industry-suggestions">
+      <option value="搬家"></option>
+      <option value="装修"></option>
+      <option value="家政"></option>
+      <option value="物流"></option>
+      <option value="教育培训"></option>
+      <option value="法律服务"></option>
+      <option value="医疗健康"></option>
+      <option value="软件服务"></option>
+    </datalist>
+    <datalist id="region-suggestions">
+      <option value="全国"></option>
+      <option value="广州"></option>
+      <option value="深圳"></option>
+      <option value="北京"></option>
+      <option value="上海"></option>
+      <option value="杭州"></option>
+      <option value="成都"></option>
+      <option value="武汉"></option>
+    </datalist>
+
+    <main id="login-view" class="login-layout">
+      <section class="login-story" aria-label="产品介绍">
+        <div class="login-brand">
+          <div class="brand-mark large" aria-hidden="true">
+            <span>问</span>
+          </div>
+          <div>
+            <strong>问天</strong>
+            <span>AI 信源探测系统</span>
+          </div>
+        </div>
+
+        <div class="story-copy">
+          <p class="eyebrow inverse">AI SOURCE OBSERVATORY</p>
+          <h1>看清 AI 回答背后的<br />公开信源轨迹</h1>
+          <p>
+            用固定问题、重复实验与人工复核，持续观察消费端回答中真正可见的引用，
+            并把它与 AI 自述的信源推荐分开比较。
+          </p>
+        </div>
+
+        <div class="story-methods" aria-label="核心方法">
+          <div>
+            <span class="method-dot cited"></span>
+            <p>
+              <strong>可见引用</strong><small>回答页面实际展示的正式信源</small>
+            </p>
+          </div>
+          <div>
+            <span class="method-dot nominated"></span>
+            <p><strong>信源自述</strong><small>AI 明确推荐的参考域名</small></p>
+          </div>
+          <div>
+            <span class="method-dot evidence"></span>
+            <p>
+              <strong>可复核证据</strong
+              ><small>保留实验条件、回答与确认记录</small>
+            </p>
+          </div>
+        </div>
+
+        <div class="observatory-art" aria-hidden="true">
+          <span class="orbit orbit-one"></span>
+          <span class="orbit orbit-two"></span>
+          <span class="orbit orbit-three"></span>
+          <span class="signal signal-one"></span>
+          <span class="signal signal-two"></span>
+          <span class="signal signal-three"></span>
+          <span class="core-star"></span>
+        </div>
+      </section>
+
+      <section class="login-panel">
+        <div class="login-card">
+          <div class="login-card-heading">
+            <span class="edition-badge">独立部署版</span>
+            <h2>欢迎回来</h2>
+            <p>登录后继续你的信源观察实验。</p>
+          </div>
+          <form id="login-form" class="stack">
+            <label>
+              <span>邮箱</span>
+              <input
+                id="login-email"
+                type="email"
+                autocomplete="username"
+                placeholder="owner@example.com"
+                required
+              />
+            </label>
+            <label>
+              <span>密码</span>
+              <input
+                id="login-password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="输入账号密码"
+                minlength="12"
+                required
+              />
+            </label>
+            <button class="primary full login-submit" type="submit">
+              进入问天工作台
+            </button>
+            <p id="login-error" class="form-error" role="alert"></p>
+          </form>
+          <p class="login-footnote">使用部署初始化时创建的本地 Owner 账号</p>
+        </div>
+      </section>
+    </main>
+
+    <main id="report-view" class="report-page hidden">
+      <header class="report-topbar">
+        <a id="report-back" class="report-back" href="./">
+          <span aria-hidden="true">←</span> 返回实验工作台
+        </a>
+        <div class="report-brand" aria-label="问天运行详情">
+          <div class="brand-mark small" aria-hidden="true"><span>问</span></div>
+          <div><strong>问天</strong><small>运行结果详情</small></div>
+        </div>
+        <button id="report-refresh" class="secondary" type="button">
+          刷新数据
+        </button>
+      </header>
+      <div class="report-canvas">
+        <section class="report-hero">
+          <div>
+            <p id="report-kicker" class="eyebrow">RUN SOURCE REPORT</p>
+            <h1 id="report-title">正在读取运行结果</h1>
+            <p id="report-subtitle" class="muted"></p>
+          </div>
+          <div id="report-meta" class="report-meta"></div>
+        </section>
+        <div id="report-body" class="report-body" aria-live="polite">
+          <div class="report-loading">
+            <span class="report-loading-dot" aria-hidden="true"></span>
+            正在汇总采样、问题与正式信源…
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div id="app-view" class="app-shell hidden">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark small" aria-hidden="true"><span>问</span></div>
+          <div>
+            <strong>问天</strong>
+            <span>AI 信源探测系统</span>
+          </div>
+          <span class="version-pill">独立版</span>
+        </div>
+
+        <div class="sidebar-scroll">
+          <nav class="product-nav" aria-label="产品导航">
+            <p class="side-label">工作台</p>
+            <div class="product-nav-item active" aria-current="page">
+              <span class="nav-glyph" aria-hidden="true">◉</span>
+              <span
+                ><strong>消费端观察</strong
+                ><small>豆包 / 千问 Web 实验</small></span
+              >
+            </div>
+          </nav>
+
+          <section class="project-switcher" aria-labelledby="project-label">
+            <div class="side-section-heading">
+              <p id="project-label" class="side-label">当前项目</p>
+              <span class="live-dot" title="工作区已连接"></span>
+            </div>
+            <div class="sidebar-filter-grid" aria-label="项目筛选">
+              <input
+                id="scope-industry-filter"
+                list="industry-suggestions"
+                maxlength="80"
+                placeholder="行业筛选"
+                aria-label="按行业筛选项目"
+              />
+              <input
+                id="scope-region-filter"
+                list="region-suggestions"
+                maxlength="80"
+                placeholder="地区筛选"
+                aria-label="按地区筛选项目"
+              />
+            </div>
+            <select
+              id="scope-select"
+              aria-label="选择项目"
+              data-searchable
+              data-search-placeholder="输入项目名称、行业或地区"
+            ></select>
+            <div class="project-meta-actions">
+              <small id="scope-filter-note">全部项目</small>
+              <button
+                id="clear-scope-filters"
+                class="text-button"
+                type="button"
+              >
+                清除筛选
+              </button>
+              <button
+                id="show-scope-metadata"
+                class="text-button"
+                type="button"
+              >
+                编辑标签
+              </button>
+            </div>
+            <form
+              id="scope-metadata-form"
+              class="stack compact sidebar-form hidden"
+            >
+              <label
+                ><span>行业</span
+                ><input
+                  id="scope-metadata-industry"
+                  list="industry-suggestions"
+                  maxlength="80"
+                  required
+              /></label>
+              <label
+                ><span>地区</span
+                ><input
+                  id="scope-metadata-region"
+                  list="region-suggestions"
+                  maxlength="80"
+                  required
+              /></label>
+              <div class="button-row">
+                <button class="primary" type="submit">保存标签</button>
+                <button
+                  id="cancel-scope-metadata"
+                  class="text-button inverse-text"
+                  type="button"
+                >
+                  取消
+                </button>
+              </div>
+            </form>
+            <button id="show-create-scope" class="ghost full" type="button">
+              <span aria-hidden="true">＋</span> 新建项目
+            </button>
+            <form id="scope-form" class="stack compact sidebar-form hidden">
+              <label
+                ><span>项目名称</span
+                ><input id="scope-name" maxlength="120" required
+              /></label>
+              <label
+                ><span>项目标识</span
+                ><input
+                  id="scope-key"
+                  maxlength="80"
+                  pattern="[a-z0-9-]+"
+                  placeholder="例如 guangzhou-move"
+                  required
+              /></label>
+              <label
+                ><span>行业</span
+                ><input
+                  id="scope-industry"
+                  list="industry-suggestions"
+                  maxlength="80"
+                  placeholder="例如 搬家"
+                  required
+              /></label>
+              <label
+                ><span>地区</span
+                ><input
+                  id="scope-region"
+                  list="region-suggestions"
+                  maxlength="80"
+                  placeholder="例如 广州"
+                  required
+              /></label>
+              <div class="button-row">
+                <button class="primary" type="submit">创建</button>
+                <button
+                  id="cancel-create-scope"
+                  class="text-button inverse-text"
+                  type="button"
+                >
+                  取消
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section class="sidebar-settings">
+            <p class="side-label">系统设置</p>
+
+            <div id="geo-connector-card" class="sidebar-card hidden">
+              <div class="sidebar-card-heading">
+                <span class="card-glyph geo" aria-hidden="true">G</span>
+                <div>
+                  <strong>GEO 连接器</strong>
+                  <small>外部系统接入</small>
+                </div>
+              </div>
+              <p id="geo-connector-summary" class="tiny">
+                查看连接状态和待确认的项目接入申请。
+              </p>
+              <button
+                id="open-geo-connector"
+                class="sidebar-action full"
+                type="button"
+              >
+                管理连接器 <span aria-hidden="true">→</span>
+              </button>
+            </div>
+
+            <div id="automation-card" class="sidebar-card hidden">
+              <div class="switch-row">
+                <div class="sidebar-card-heading no-gap">
+                  <span class="card-glyph automation" aria-hidden="true"
+                    >A</span
+                  >
+                  <div>
+                    <strong>自动化</strong>
+                    <small>默认关闭</small>
+                  </div>
+                </div>
+                <label class="switch" aria-label="自动化开关">
+                  <input id="automation-toggle" type="checkbox" />
+                  <span aria-hidden="true"></span>
+                </label>
+              </div>
+              <p id="automation-note" class="tiny"></p>
+            </div>
+
+            <div id="scope-danger-card" class="sidebar-card danger-card hidden">
+              <div class="sidebar-card-heading">
+                <span class="card-glyph danger-glyph" aria-hidden="true"
+                  >!</span
+                >
+                <div>
+                  <strong>危险操作</strong>
+                  <small>仅项目 Owner 可用</small>
+                </div>
+              </div>
+              <p id="scope-deletion-note" class="tiny">
+                删除会清理问题、运行、证据和排名，操作不可撤销。
+              </p>
+              <button
+                id="show-scope-deletion"
+                class="danger full"
+                type="button"
+              >
+                删除当前项目
+              </button>
+              <form id="scope-deletion-form" class="stack compact hidden">
+                <label
+                  ><span>输入项目标识确认</span
+                  ><input id="scope-deletion-key" autocomplete="off" required
+                /></label>
+                <label
+                  ><span>当前账号密码</span
+                  ><input
+                    id="scope-deletion-password"
+                    type="password"
+                    autocomplete="current-password"
+                    minlength="12"
+                    required
+                /></label>
+                <div class="button-row">
+                  <button
+                    id="submit-scope-deletion"
+                    class="danger"
+                    type="submit"
+                  >
+                    确认删除
+                  </button>
+                  <button
+                    id="cancel-scope-deletion"
+                    class="text-button inverse-text"
+                    type="button"
+                  >
+                    取消
+                  </button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+
+        <footer class="sidebar-footer">
+          <div class="user-avatar" aria-hidden="true">WT</div>
+          <div class="sidebar-user">
+            <span>当前账号</span>
+            <strong id="current-user"></strong>
+          </div>
+          <button
+            id="logout-button"
+            class="logout-button"
+            type="button"
+            title="退出登录"
+          >
+            <span aria-hidden="true">↗</span
+            ><span class="sr-only">退出登录</span>
+          </button>
+        </footer>
+      </aside>
+
+      <div class="app-frame">
+        <header class="topbar">
+          <div class="topbar-context">
+            <span>消费端观察</span>
+            <strong>实验工作台</strong>
+          </div>
+          <div class="topbar-actions">
+            <span class="system-status"><i></i> 独立部署</span>
+            <span class="topbar-divider"></span>
+            <span class="date-context">证据驱动 · 人工复核</span>
+          </div>
+        </header>
+
+        <main class="content">
+          <section class="boundary-notice">
+            <span class="notice-icon" aria-hidden="true">i</span>
+            <div>
+              <strong>测量边界</strong>
+              <span
+                >统计回答中可见的正式信源条目和 AI
+                明确自述的信源推荐；不能据此推断平台内部真实抓取频率或隐藏权重。</span
+              >
+            </div>
+          </section>
+
+          <section id="empty-project" class="empty-state">
+            <span class="empty-orbit" aria-hidden="true">＋</span>
+            <p class="eyebrow">START HERE</p>
+            <h2>创建第一个观察项目</h2>
+            <p>项目会隔离问题、实验、截图证据和排名结果。</p>
+            <button
+              id="empty-create-scope"
+              class="primary"
+              type="button"
+              data-create-project-trigger
+            >
+              新建项目
+            </button>
+          </section>
+
+          <section id="deleting-project" class="empty-state hidden">
+            <span class="empty-orbit danger-empty" aria-hidden="true">!</span>
+            <p class="eyebrow danger-eyebrow">PROJECT CLEANUP</p>
+            <h2>项目正在删除</h2>
+            <p id="deleting-project-note">
+              系统正在清理数据库和对象存储，请勿继续向该项目提交数据。
+            </p>
+          </section>
+
+          <div id="project-workspace" class="hidden">
+            <section class="hero-row">
+              <div class="hero-copy">
+                <p class="eyebrow">CONSUMER SOURCE LAB</p>
+                <h1 id="project-title">项目</h1>
+                <p class="muted">
+                  固定问题和实验条件，采集 AI
+                  消费端页面的可见回答，复核后再比较引用与信源自述。
+                </p>
+              </div>
+              <div class="hero-actions">
+                <div class="hero-facts" aria-label="当前实验方法">
+                  <span
+                    ><small>观察对象</small
+                    ><strong>豆包 / 千问 Web</strong></span
+                  >
+                  <span><small>采集方式</small><strong>可见页面</strong></span>
+                  <span
+                    ><small>结论类型</small><strong>描述性统计</strong></span
+                  >
+                </div>
+                <button
+                  id="refresh-button"
+                  class="secondary refresh-button"
+                  type="button"
+                >
+                  <span aria-hidden="true">↻</span> 刷新数据
+                </button>
+              </div>
+            </section>
+
+            <nav class="step-nav" aria-label="实验步骤">
+              <button
+                class="step active"
+                data-panel="questions-panel"
+                type="button"
+                aria-current="step"
+              >
+                <span class="step-index">01</span>
+                <span class="step-copy"
+                  ><strong>问题集</strong><small>定义固定样本</small></span
+                >
+              </button>
+              <button class="step" data-panel="runs-panel" type="button">
+                <span class="step-index">02</span>
+                <span class="step-copy"
+                  ><strong>实验运行</strong><small>配置可比条件</small></span
+                >
+              </button>
+              <button class="step" data-panel="tasks-panel" type="button">
+                <span class="step-index">03</span>
+                <span class="step-copy"
+                  ><strong>采集与复核</strong><small>确认可见证据</small></span
+                >
+              </button>
+              <button class="step" data-panel="comparison-panel" type="button">
+                <span class="step-index">04</span>
+                <span class="step-copy"
+                  ><strong>排名与对照</strong><small>分开解读结果</small></span
+                >
+              </button>
+            </nav>
+
+            <section id="questions-panel" class="panel">
+              <div class="panel-heading">
+                <div class="heading-copy">
+                  <span class="section-number">01</span>
+                  <div>
+                    <p class="panel-kicker">QUERY SNAPSHOT</p>
+                    <h2>建立问题集</h2>
+                    <p>把本轮需要重复观察的问题固化为不可变快照。</p>
+                  </div>
+                </div>
+                <span id="snapshot-count" class="count-pill">0 个问题集</span>
+              </div>
+              <form id="snapshot-form" class="form-grid">
+                <label
+                  ><span>问题集名称</span
+                  ><input
+                    id="snapshot-title"
+                    maxlength="120"
+                    value="首轮信源观察"
+                    required
+                /></label>
+                <label
+                  ><span>行业</span
+                  ><input
+                    id="snapshot-industry"
+                    list="industry-suggestions"
+                    maxlength="80"
+                    placeholder="例如 搬家"
+                    required
+                /></label>
+                <label
+                  ><span>地区</span
+                  ><input
+                    id="snapshot-region"
+                    list="region-suggestions"
+                    maxlength="80"
+                    placeholder="例如 广州"
+                    required
+                /></label>
+                <label
+                  ><span>问题意图</span
+                  ><select id="query-intent">
+                    <option value="recommendation">推荐</option>
+                    <option value="comparison">比较</option>
+                    <option value="exploration">探索</option>
+                    <option value="brand_recognition">品牌认知</option>
+                    <option value="education">知识</option>
+                    <option value="procurement">采购</option>
+                  </select></label
+                >
+                <label
+                  ><span>商业价值</span
+                  ><select id="commercial-value">
+                    <option value="high">高</option>
+                    <option value="medium">中</option>
+                    <option value="low">低</option>
+                  </select></label
+                >
+                <label
+                  ><span>生成数量</span
+                  ><select id="question-generate-count">
+                    <option value="5">5 个</option>
+                    <option value="10" selected>10 个</option>
+                    <option value="20">20 个</option>
+                  </select></label
+                >
+                <div class="wide question-generator-bar">
+                  <div>
+                    <strong>行业问题生成器</strong>
+                    <small id="question-generator-note"
+                      >填写行业和地区后生成；内容会先进入下方文本框，可修改后再保存。</small
+                    >
+                  </div>
+                  <button
+                    id="generate-industry-questions"
+                    class="secondary"
+                    type="button"
+                  >
+                    一键生成问题
+                  </button>
+                </div>
+                <label class="wide query-editor"
+                  ><span>问题列表 <small>每行一个，最多 100 个</small></span
+                  ><textarea
+                    id="query-lines"
+                    rows="7"
+                    maxlength="100000"
+                    placeholder="广州搬家公司哪家好？&#10;请推荐几家广州的搬家公司"
+                    required
+                  ></textarea>
+                </label>
+                <div class="wide form-footer">
+                  <p>保存后，本轮运行会始终使用同一份问题快照。</p>
+                  <button class="primary" type="submit">保存问题集</button>
+                </div>
+              </form>
+              <div class="list-section-heading">
+                <h3>已有问题集</h3>
+                <span>按创建时间展示</span>
+              </div>
+              <div class="catalog-filter-bar" aria-label="问题集筛选">
+                <label
+                  ><span>行业</span
+                  ><input
+                    id="snapshot-industry-filter"
+                    list="industry-suggestions"
+                    maxlength="80"
+                    placeholder="全部行业"
+                /></label>
+                <label
+                  ><span>地区</span
+                  ><input
+                    id="snapshot-region-filter"
+                    list="region-suggestions"
+                    maxlength="80"
+                    placeholder="全部地区"
+                /></label>
+                <button
+                  id="clear-snapshot-filters"
+                  class="text-button"
+                  type="button"
+                >
+                  清除筛选
+                </button>
+              </div>
+              <div id="snapshot-list" class="item-list"></div>
+            </section>
+
+            <section id="runs-panel" class="panel hidden">
+              <div class="panel-heading">
+                <div class="heading-copy">
+                  <span class="section-number">02</span>
+                  <div>
+                    <p class="panel-kicker">EXPERIMENT RUN</p>
+                    <h2>创建实验运行</h2>
+                    <p>自然回答与信源自述分别运行，避免两类证据混用。</p>
+                  </div>
+                </div>
+                <span id="run-count" class="count-pill">0 次运行</span>
+              </div>
+              <form id="run-form" class="form-grid run-grid">
+                <label
+                  ><span>观察对象</span
+                  ><select id="run-surface">
+                    <option value="doubao_web">豆包 Web</option>
+                    <option value="qianwen_web">千问 Web</option>
+                  </select></label
+                >
+                <label
+                  ><span>问题集</span
+                  ><select
+                    id="run-snapshot"
+                    required
+                    data-searchable
+                    data-search-placeholder="搜索问题集"
+                  ></select
+                ></label>
+                <label
+                  ><span>实验类型</span
+                  ><select id="experiment-kind">
+                    <option value="natural_answer">
+                      自然回答：统计可见引用
+                    </option>
+                    <option value="source_nomination">
+                      信源自述：统计推荐域名
+                    </option>
+                  </select></label
+                >
+                <label
+                  ><span>每题采样次数</span
+                  ><select id="sample-count">
+                    <option>1</option>
+                    <option selected>2</option>
+                    <option>3</option>
+                    <option>4</option>
+                    <option>5</option>
+                  </select></label
+                >
+                <label id="paired-run-field" class="hidden"
+                  ><span>配对的自然回答运行</span
+                  ><select
+                    id="paired-run"
+                    data-searchable
+                    data-search-placeholder="搜索已完成运行"
+                  ></select
+                ></label>
+                <label
+                  ><span>AI 搜索状态</span
+                  ><select id="search-mode">
+                    <option value="unknown">无法确认</option>
+                    <option value="enabled">已开启</option>
+                    <option value="disabled">已关闭</option>
+                  </select></label
+                >
+                <label
+                  ><span>采集地区代码</span
+                  ><input id="run-region" value="CN_MAINLAND" maxlength="120"
+                /></label>
+                <label class="check-label"
+                  ><input id="run-logged-in" type="checkbox" checked /><span
+                    >本次在已登录状态运行</span
+                  ></label
+                >
+                <label class="check-label"
+                  ><input id="run-new-chat" type="checkbox" checked /><span
+                    >每次使用新对话</span
+                  ></label
+                >
+                <div class="wide inline-note" id="run-guidance"></div>
+                <div
+                  id="run-create-summary"
+                  class="wide run-create-summary"
+                  aria-live="polite"
+                ></div>
+                <div class="wide form-footer">
+                  <p>运行创建后会按“问题 × 每题采样次数”生成采样单元。</p>
+                  <button id="create-run-button" class="primary" type="submit">
+                    创建实验运行
+                  </button>
+                </div>
+              </form>
+              <div class="list-section-heading">
+                <h3>实验记录</h3>
+                <span>自然回答与信源自述独立统计</span>
+              </div>
+              <div class="catalog-filter-bar" aria-label="实验运行筛选">
+                <label
+                  ><span>行业</span
+                  ><input
+                    id="run-industry-filter"
+                    list="industry-suggestions"
+                    maxlength="80"
+                    placeholder="全部行业"
+                /></label>
+                <label
+                  ><span>地区</span
+                  ><input
+                    id="run-business-region-filter"
+                    list="region-suggestions"
+                    maxlength="80"
+                    placeholder="全部地区"
+                /></label>
+                <button
+                  id="clear-run-filters"
+                  class="text-button"
+                  type="button"
+                >
+                  清除筛选
+                </button>
+              </div>
+              <div id="run-list" class="item-list"></div>
+            </section>
+
+            <section id="tasks-panel" class="panel hidden">
+              <div class="panel-heading">
+                <div class="heading-copy">
+                  <span class="section-number">03</span>
+                  <div>
+                    <p class="panel-kicker">CAPTURE & REVIEW</p>
+                    <h2>采集与复核</h2>
+                    <p>按问题汇总采样进度；只有确认过的内容才进入统计。</p>
+                  </div>
+                </div>
+                <div class="task-heading-actions">
+                  <label class="heading-select"
+                    ><span>查看运行</span
+                    ><select
+                      id="task-run-select"
+                      aria-label="选择运行"
+                      data-searchable
+                      data-search-placeholder="搜索运行、平台或时间"
+                    ></select
+                  ></label>
+                  <div class="task-action-buttons">
+                    <button
+                      id="create-batch-handoff"
+                      class="primary claim-next-button"
+                      type="button"
+                      disabled
+                    >
+                      整批接入
+                    </button>
+                    <button
+                      id="claim-next-task"
+                      class="secondary claim-next-button"
+                      type="button"
+                      disabled
+                    >
+                      领取下一次采样
+                    </button>
+                    <button
+                      id="confirm-all-tasks"
+                      class="primary claim-next-button"
+                      type="button"
+                      disabled
+                    >
+                      一键确认
+                    </button>
+                  </div>
+                  <div class="task-action-status">
+                    <small id="claim-next-note"
+                      >整批接入可在所选 AI 页面连续完成全部待采样内容</small
+                    >
+                    <small
+                      id="task-auto-refresh-status"
+                      class="task-sync-status"
+                      >自动同步：等待当前运行</small
+                    >
+                  </div>
+                </div>
+              </div>
+              <div
+                id="task-run-context"
+                class="task-run-context"
+                aria-live="polite"
+              ></div>
+              <div
+                id="batch-handoff-card"
+                class="handoff-card batch-card hidden"
+              >
+                <div class="panel-heading">
+                  <div class="heading-copy compact-heading">
+                    <span class="handoff-icon" aria-hidden="true">⇥</span>
+                    <div>
+                      <h3>整批连续采集</h3>
+                      <p>
+                        只需复制一次整批接入码；扩展会留在当前 AI
+                        页面连续领取、发送、采集并提交。
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    id="close-batch-handoff"
+                    class="text-button"
+                    type="button"
+                  >
+                    关闭
+                  </button>
+                </div>
+                <label
+                  ><span>粘贴到浏览器扩展，选择“连续采集整批”</span
+                  ><textarea
+                    id="batch-handoff-code"
+                    rows="4"
+                    readonly
+                  ></textarea></label
+                ><button id="copy-batch-handoff" class="primary" type="button">
+                  复制整批接入码
+                </button>
+                <p id="batch-handoff-expiry" class="tiny"></p>
+              </div>
+              <div id="handoff-card" class="handoff-card hidden">
+                <div class="panel-heading">
+                  <div class="heading-copy compact-heading">
+                    <span class="handoff-icon" aria-hidden="true">↗</span>
+                    <div>
+                      <h3>当前领取采样</h3>
+                      <p>按顺序复制问题和一次性接入码，接入码 10 分钟有效。</p>
+                    </div>
+                  </div>
+                  <button id="close-handoff" class="text-button" type="button">
+                    关闭
+                  </button>
+                </div>
+                <div class="handoff-grid">
+                  <div>
+                    <label
+                      ><span>1. 向当前 AI 页面发送的问题</span
+                      ><textarea
+                        id="handoff-query"
+                        rows="4"
+                        readonly
+                      ></textarea></label
+                    ><button id="copy-query" class="secondary" type="button">
+                      复制问题
+                    </button>
+                  </div>
+                  <div>
+                    <label
+                      ><span>2. 粘贴到浏览器扩展的接入码</span
+                      ><textarea
+                        id="handoff-code"
+                        rows="4"
+                        readonly
+                      ></textarea></label
+                    ><button id="copy-handoff" class="primary" type="button">
+                      复制接入码
+                    </button>
+                  </div>
+                </div>
+                <p id="handoff-expiry" class="tiny"></p>
+              </div>
+              <div class="evidence-legend" aria-label="证据流程说明">
+                <span><i class="legend-dot waiting"></i>等待领取</span
+                ><span><i class="legend-dot reviewing"></i>待人工复核</span
+                ><span><i class="legend-dot confirmed"></i>已计入统计</span>
+              </div>
+              <div id="task-list" class="item-list"></div>
+              <div id="nomination-reviews" class="review-list"></div>
+            </section>
+
+            <section id="comparison-panel" class="panel hidden">
+              <div class="panel-heading">
+                <div class="heading-copy">
+                  <span class="section-number">04</span>
+                  <div>
+                    <p class="panel-kicker">SOURCE COMPARISON</p>
+                    <h2>排名与信源对照</h2>
+                    <p>累计正式信源条目，并分开展示实际引用与 AI 自述推荐。</p>
+                  </div>
+                </div>
+                <div class="metric-legend" aria-label="结果类型">
+                  <span class="cited-label"><i></i>实际引用</span
+                  ><span class="nominated-label"><i></i>AI 自述</span>
+                </div>
+              </div>
+              <div class="comparison-controls">
+                <label
+                  ><span>自然回答运行</span
+                  ><select
+                    id="comparison-natural"
+                    data-searchable
+                    data-search-placeholder="搜索自然回答运行"
+                  ></select
+                ></label>
+                <label
+                  ><span>信源自述运行</span
+                  ><select
+                    id="comparison-nomination"
+                    data-searchable
+                    data-search-placeholder="搜索配对运行"
+                  ></select
+                ></label>
+                <button id="load-ranking" class="secondary" type="button">
+                  打开引用详情 ↗
+                </button>
+                <button
+                  id="load-comparison"
+                  class="primary nomination-action"
+                  type="button"
+                >
+                  打开对照详情 ↗
+                </button>
+              </div>
+              <div class="comparison-disclosure">
+                排名按已确认回答中的正式条目累计；重合只表示两个可观察集合的交集。
+              </div>
+              <div id="comparison-result" class="comparison-result">
+                <article class="result-launcher">
+                  <div>
+                    <p class="panel-kicker">DEDICATED REPORT</p>
+                    <h3>结果将在独立标签页中展示</h3>
+                    <p>
+                      包含运行采样汇总、单问题信源统计、Top
+                      域名图表和可展开明细，不再把全部结果堆在工作台。
+                    </p>
+                  </div>
+                  <div class="result-feature-list" aria-label="详情页内容">
+                    <span>采样完成情况</span><span>问题信源密度</span
+                    ><span>域名排名图表</span>
+                  </div>
+                </article>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <dialog id="geo-connector-dialog" class="admin-dialog">
+      <div class="dialog-heading">
+        <div class="heading-copy">
+          <span class="dialog-mark" aria-hidden="true">G</span>
+          <div>
+            <p class="eyebrow">SYSTEM INTEGRATION</p>
+            <h2>GEO Content OS 连接器</h2>
+            <p class="muted">
+              GEO
+              只能发起申请；项目必须由问天管理员选择并确认，不会按名称自动关联。
+            </p>
+          </div>
+        </div>
+        <button id="close-geo-connector" class="text-button" type="button">
+          关闭
+        </button>
+      </div>
+      <section class="dialog-section">
+        <div class="panel-heading">
+          <div>
+            <h3>连接状态</h3>
+            <p>第一版一个问天实例只连接一个有效的 GEO 租户。</p>
+          </div>
+          <button id="refresh-geo-connector" class="secondary" type="button">
+            刷新
+          </button>
+        </div>
+        <div id="geo-connector-list" class="item-list"></div>
+        <form id="geo-connector-form" class="form-grid compact-grid hidden">
+          <label
+            ><span>连接名称</span
+            ><input id="geo-display-name" maxlength="160" required
+          /></label>
+          <label
+            ><span>GEO 实例标识</span
+            ><input id="geo-instance-ref" maxlength="160" required
+          /></label>
+          <label
+            ><span>GEO 租户标识</span
+            ><input id="geo-tenant-ref" maxlength="160" required
+          /></label>
+          <label class="wide"
+            ><span>允许接入的 GEO 地址</span
+            ><input
+              id="geo-allowed-origin"
+              type="url"
+              placeholder="https://geo.example.com"
+              required
+          /></label>
+          <label class="wide"
+            ><span>回调地址（第一版可不填）</span
+            ><input
+              id="geo-callback-url"
+              type="url"
+              placeholder="https://geo.example.com/api/wentian/events"
+          /></label>
+          <div class="wide form-footer">
+            <span class="tiny">建立后只显示一次客户端密钥。</span
+            ><button class="primary" type="submit">建立连接器</button>
+          </div>
+        </form>
+        <div id="geo-secret-card" class="secret-card hidden">
+          <strong>请立即保存新的客户端密钥</strong>
+          <p class="tiny">关闭后不能再次查看；遗失时需轮换密钥。</p>
+          <label
+            ><span>连接器 ID</span
+            ><textarea
+              id="geo-connector-id-output"
+              rows="2"
+              readonly
+            ></textarea>
+          </label>
+          <label
+            ><span>客户端密钥</span
+            ><textarea
+              id="geo-client-secret-output"
+              rows="3"
+              readonly
+            ></textarea>
+          </label>
+          <button id="copy-geo-secret" class="primary" type="button">
+            复制连接信息
+          </button>
+        </div>
+      </section>
+      <section class="dialog-section">
+        <div class="panel-heading">
+          <div>
+            <h3>待确认的项目申请</h3>
+            <p>批准时必须从当前账号可管理的问天项目中明确选择。</p>
+          </div>
+          <span id="geo-pending-count" class="count-pill">0 项</span>
+        </div>
+        <div id="geo-binding-list" class="item-list"></div>
+      </section>
+    </dialog>
+
+    <script src="./report-core.js"></script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

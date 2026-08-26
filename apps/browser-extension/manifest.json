@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "问天 AI 信源采集器",
+  "version": "0.0.21",
+  "description": "支持豆包与千问 Web 的单题、整批连续提问采集；提交后统一进入人工复核。",
+  "permissions": ["activeTab", "scripting", "tabs"],
+  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "打开问天采集"
+  }
+}
