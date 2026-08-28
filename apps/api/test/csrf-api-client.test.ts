@@ -63,3 +63,21 @@ test("刷新后仍被拒绝时停止而不循环重试", async () => {
   assert.equal(attempts, 2);
   assert.equal(refreshes, 1);
 });
+
+test("浏览器fetch始终使用全局对象作为调用接收者", async () => {
+  let receiver: unknown;
+  await requestJsonWithCsrfRecovery({
+    path: "/api/v1/example",
+    csrfToken: null,
+    fetchImpl: async function () {
+      receiver = this;
+      return new Response(JSON.stringify({ status: "ok" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
+    refreshCsrfToken: async () => "unused",
+  });
+
+  assert.equal(receiver, globalThis);
+});

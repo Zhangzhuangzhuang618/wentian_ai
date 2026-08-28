@@ -15,7 +15,7 @@ export async function requestJsonWithCsrfRecovery(input) {
       if (!csrfToken) throw apiError("LOCAL_SESSION_INVALID");
       headers["x-wentian-csrf-token"] = csrfToken;
     }
-    const response = await input.fetchImpl(input.path, {
+    const response = await input.fetchImpl.call(globalThis, input.path, {
       method,
       headers,
       credentials: "same-origin",
