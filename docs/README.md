@@ -142,3 +142,4 @@
 - [目录元数据、可搜索选择器与行业问题生成决策](./decisions/DEC-WT084-001-CATALOG-METADATA-AND-QUESTION-GENERATION.md)
 - [WT-084 目录元数据、可搜索选择器与行业问题生成](./tasks/WT-084-CATALOG-METADATA-AND-QUESTION-GENERATION.md)
 - [WT-084 深度自审](./reviews/WT084-DEEP-SELF-REVIEW-2026-08-26.md)
+- [WT-085 页面旧 CSRF 令牌自动恢复](./tasks/WT-085-CSRF-TOKEN-RECOVERY.md)

@@ -64,6 +64,7 @@ test("独立版首页和静态资源带安全响应头", async () => {
     const page = await fetch(`${baseUrl}/`);
     const script = await fetch(`${baseUrl}/app.js`);
     const questionGenerator = await fetch(`${baseUrl}/question-generator.js`);
+    const csrfApiClient = await fetch(`${baseUrl}/csrf-api-client.js`);
     const reportCore = await fetch(`${baseUrl}/report-core.js`);
     const styles = await fetch(`${baseUrl}/styles.css`);
 
@@ -121,7 +122,9 @@ test("独立版首页和静态资源带安全响应头", async () => {
     assert.match(scriptText, /不会继承任何历史运行的完成状态/);
     assert.equal(reportCore.status, 200);
     assert.equal(questionGenerator.status, 200);
+    assert.equal(csrfApiClient.status, 200);
     assert.match(await questionGenerator.text(), /generateIndustryQuestions/);
+    assert.match(await csrfApiClient.text(), /requestJsonWithCsrfRecovery/);
     assert.match(
       reportCore.headers.get("content-type") ?? "",
       /text\/javascript/,

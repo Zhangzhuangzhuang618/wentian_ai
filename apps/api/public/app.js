@@ -2,6 +2,7 @@ import {
   generateIndustryQuestions,
   QUESTION_GENERATOR_VERSION,
 } from "./question-generator.js";
+import { requestJsonWithCsrfRecovery } from "./csrf-api-client.js";
 
 const state = {
   csrf: null,
@@ -2282,17 +2283,20 @@ function ensureSelectedRunTasks() {
 }
 
 async function api(path, options = {}) {
-  const headers = { accept: "application/json" };
-  if (options.body !== undefined) headers["content-type"] = "application/json";
-  if (options.csrf !== false && options.method && options.method !== "GET") {
-    if (!state.csrf) throw new Error("LOCAL_SESSION_INVALID");
-    headers["x-wentian-csrf-token"] = state.csrf;
-  }
-  const response = await fetch(path, {
-    method: options.method ?? "GET",
-    headers,
+  return requestJsonWithCsrfRecovery({
+    path,
+    options,
+    csrfToken: state.csrf,
+    fetchImpl: fetch,
+    refreshCsrfToken,
+  });
+}
+
+async function refreshCsrfToken() {
+  const response = await fetch("/api/v1/auth/session", {
+    method: "GET",
+    headers: { accept: "application/json" },
     credentials: "same-origin",
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
   const body = await response
     .json()
@@ -2302,7 +2306,9 @@ async function api(path, options = {}) {
     error.code = body.error;
     throw error;
   }
-  return body;
+  state.csrf = body.csrf_token;
+  state.user = body.user;
+  return body.csrf_token;
 }
 
 function initializeSearchableSelects(root = document) {

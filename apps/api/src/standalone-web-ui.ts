@@ -37,6 +37,13 @@ const assets = new Map([
       contentType: "text/javascript; charset=utf-8",
     },
   ],
+  [
+    "/csrf-api-client.js",
+    {
+      file: new URL("../public/csrf-api-client.js", import.meta.url),
+      contentType: "text/javascript; charset=utf-8",
+    },
+  ],
 ] as const);
 
 export async function handleStandaloneWebUi(
