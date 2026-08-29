@@ -44,6 +44,13 @@ const assets = new Map([
       contentType: "text/javascript; charset=utf-8",
     },
   ],
+  [
+    "/searchable-select-core.js",
+    {
+      file: new URL("../public/searchable-select-core.js", import.meta.url),
+      contentType: "text/javascript; charset=utf-8",
+    },
+  ],
 ] as const);
 
 export async function handleStandaloneWebUi(

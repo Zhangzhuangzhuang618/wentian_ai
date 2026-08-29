@@ -3,6 +3,10 @@ import {
   QUESTION_GENERATOR_VERSION,
 } from "./question-generator.js";
 import { requestJsonWithCsrfRecovery } from "./csrf-api-client.js";
+import {
+  describeSearchableLabel,
+  filterSearchableOptions,
+} from "./searchable-select-core.js";
 
 const state = {
   csrf: null,
@@ -35,6 +39,8 @@ let lastTaskAutoRefreshAt = 0;
 let bulkConfirmInFlight = false;
 const searchableSelectControllers = new WeakMap();
 let searchableSelectSequence = 0;
+let openSearchableSelectController = null;
+let searchableSelectGlobalEventsBound = false;
 
 initializeSearchableSelects();
 bindEvents();
@@ -2312,81 +2318,291 @@ async function refreshCsrfToken() {
 }
 
 function initializeSearchableSelects(root = document) {
+  bindSearchableSelectGlobalEvents();
   root
     .querySelectorAll("select[data-searchable]")
     .forEach((select) => enhanceSearchableSelect(select));
+}
+
+function bindSearchableSelectGlobalEvents() {
+  if (searchableSelectGlobalEventsBound) return;
+  searchableSelectGlobalEventsBound = true;
+  document.addEventListener("pointerdown", (event) => {
+    const controller = openSearchableSelectController;
+    if (
+      controller &&
+      event.target instanceof Node &&
+      !controller.wrapper.contains(event.target)
+    ) {
+      closeSearchableSelect(controller);
+    }
+  });
+  document.addEventListener(
+    "scroll",
+    (event) => {
+      const controller = openSearchableSelectController;
+      if (
+        controller &&
+        event.target instanceof Node &&
+        !controller.panel.contains(event.target)
+      ) {
+        closeSearchableSelect(controller);
+      }
+    },
+    true,
+  );
+  window.addEventListener("resize", () => {
+    if (openSearchableSelectController) {
+      closeSearchableSelect(openSearchableSelectController);
+    }
+  });
 }
 
 function enhanceSearchableSelect(select) {
   if (searchableSelectControllers.has(select)) return;
   searchableSelectSequence += 1;
   const wrapper = element("div", "searchable-select");
+  const trigger = element("button", "searchable-select-trigger");
+  const current = element("span", "searchable-select-current");
+  const currentPrimary = element("strong");
+  const currentMeta = element("small");
+  const chevron = element("span", "searchable-select-chevron", "⌄");
+  const panel = element("div", "searchable-select-popover hidden");
+  const searchRow = element("div", "searchable-select-search-row");
   const input = document.createElement("input");
-  const datalist = document.createElement("datalist");
-  const listId = `searchable-select-${searchableSelectSequence}`;
+  const count = element("span", "searchable-select-count");
+  const list = element("div", "searchable-select-results");
+  const panelId = `searchable-select-panel-${searchableSelectSequence}`;
+  const listId = `searchable-select-list-${searchableSelectSequence}`;
+  trigger.type = "button";
+  trigger.setAttribute("aria-haspopup", "listbox");
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.setAttribute("aria-controls", panelId);
+  current.append(currentPrimary, currentMeta);
+  trigger.append(current, chevron);
+  panel.id = panelId;
   input.type = "search";
-  input.setAttribute("list", listId);
   input.setAttribute("autocomplete", "off");
+  input.setAttribute("role", "combobox");
+  input.setAttribute("aria-autocomplete", "list");
+  input.setAttribute("aria-expanded", "false");
+  input.setAttribute("aria-controls", listId);
   input.setAttribute(
     "aria-label",
-    select.getAttribute("aria-label") ?? "搜索并选择",
+    select.getAttribute("aria-label") ?? "搜索可选项",
   );
   input.placeholder = select.dataset.searchPlaceholder ?? "输入关键词搜索";
-  datalist.id = listId;
+  list.id = listId;
+  list.setAttribute("role", "listbox");
+  searchRow.append(input, count);
+  panel.append(searchRow, list);
   select.before(wrapper);
-  wrapper.append(input, datalist);
+  wrapper.append(trigger, panel);
   select.classList.add("searchable-select-source");
 
   const controller = {
+    select,
+    wrapper,
+    trigger,
+    currentPrimary,
+    currentMeta,
+    panel,
     input,
-    datalist,
+    count,
+    list,
+    options: [],
+    visibleOptions: [],
+    resultButtons: [],
+    activeIndex: -1,
     predicate: null,
     refresh(predicate = controller.predicate) {
       controller.predicate = predicate;
-      const options = [...select.options].filter(
-        (option) => option.value && (!predicate || predicate(option)),
-      );
-      datalist.replaceChildren(
-        ...options.map((option) => {
-          const suggestion = document.createElement("option");
-          suggestion.value = option.textContent ?? "";
-          return suggestion;
-        }),
-      );
-      input.disabled = select.disabled || options.length === 0;
-      input.placeholder = options.length
-        ? (select.dataset.searchPlaceholder ?? "输入关键词搜索")
-        : (select.options[0]?.textContent ?? "暂无可选项");
+      const primaryParts = Number(select.dataset.searchPrimaryParts ?? "1");
+      controller.options = [...select.options]
+        .filter((option) => option.value && (!predicate || predicate(option)))
+        .map((option) => {
+          const label = (option.textContent ?? "").trim();
+          return {
+            value: option.value,
+            label,
+            ...describeSearchableLabel(label, primaryParts),
+          };
+        });
+      trigger.disabled = select.disabled || controller.options.length === 0;
       syncSearchableSelect(select);
+      if (openSearchableSelectController === controller) {
+        renderSearchableSelectResults(controller);
+        positionSearchableSelect(controller);
+      }
     },
   };
   searchableSelectControllers.set(select, controller);
 
-  const commit = () => {
-    const typed = input.value.trim().toLocaleLowerCase("zh-CN");
-    if (!typed) {
-      if ([...select.options].some((option) => option.value === "")) {
-        select.value = "";
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+  trigger.addEventListener("click", () => {
+    if (openSearchableSelectController === controller) {
+      closeSearchableSelect(controller);
+    } else {
+      openSearchableSelect(controller);
+    }
+  });
+  trigger.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      openSearchableSelect(controller);
+      moveSearchableSelectActive(controller, 1);
+    }
+  });
+  input.addEventListener("input", () =>
+    renderSearchableSelectResults(controller),
+  );
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      moveSearchableSelectActive(
+        controller,
+        event.key === "ArrowDown" ? 1 : -1,
+      );
       return;
     }
-    const match = [...select.options].find(
-      (option) =>
-        option.value &&
-        (!controller.predicate || controller.predicate(option)) &&
-        (option.textContent ?? "").trim().toLocaleLowerCase("zh-CN") === typed,
-    );
-    if (match && select.value !== match.value) {
-      select.value = match.value;
-      select.dispatchEvent(new Event("change", { bubbles: true }));
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const option = controller.visibleOptions[controller.activeIndex];
+      if (option) commitSearchableSelect(controller, option);
+      return;
     }
-  };
-  input.addEventListener("input", commit);
-  input.addEventListener("change", commit);
-  input.addEventListener("blur", () => syncSearchableSelect(select));
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSearchableSelect(controller, true);
+    }
+  });
   select.addEventListener("change", () => syncSearchableSelect(select));
   controller.refresh();
+}
+
+function openSearchableSelect(controller) {
+  if (controller.trigger.disabled) return;
+  if (
+    openSearchableSelectController &&
+    openSearchableSelectController !== controller
+  ) {
+    closeSearchableSelect(openSearchableSelectController);
+  }
+  openSearchableSelectController = controller;
+  controller.panel.classList.remove("hidden");
+  controller.trigger.setAttribute("aria-expanded", "true");
+  controller.input.setAttribute("aria-expanded", "true");
+  controller.input.value = "";
+  renderSearchableSelectResults(controller);
+  positionSearchableSelect(controller);
+  requestAnimationFrame(() => controller.input.focus());
+}
+
+function closeSearchableSelect(controller, restoreFocus = false) {
+  controller.panel.classList.add("hidden");
+  controller.trigger.setAttribute("aria-expanded", "false");
+  controller.input.setAttribute("aria-expanded", "false");
+  controller.input.removeAttribute("aria-activedescendant");
+  controller.activeIndex = -1;
+  if (openSearchableSelectController === controller) {
+    openSearchableSelectController = null;
+  }
+  if (restoreFocus) controller.trigger.focus();
+}
+
+function positionSearchableSelect(controller) {
+  const rect = controller.trigger.getBoundingClientRect();
+  const viewportGap = 12;
+  const width = Math.min(
+    Math.max(rect.width, 360),
+    window.innerWidth - viewportGap * 2,
+  );
+  const left = Math.min(
+    Math.max(viewportGap, rect.left),
+    window.innerWidth - width - viewportGap,
+  );
+  const spaceBelow = window.innerHeight - rect.bottom - viewportGap;
+  const spaceAbove = rect.top - viewportGap;
+  const openBelow = spaceBelow >= 260 || spaceBelow >= spaceAbove;
+  controller.panel.style.width = `${width}px`;
+  controller.panel.style.left = `${left}px`;
+  controller.panel.style.maxHeight = `${Math.max(
+    200,
+    Math.min(430, openBelow ? spaceBelow : spaceAbove),
+  )}px`;
+  if (openBelow) {
+    controller.panel.style.top = `${rect.bottom + 6}px`;
+    controller.panel.style.bottom = "auto";
+  } else {
+    controller.panel.style.top = "auto";
+    controller.panel.style.bottom = `${window.innerHeight - rect.top + 6}px`;
+  }
+}
+
+function renderSearchableSelectResults(controller) {
+  const result = filterSearchableOptions(
+    controller.options,
+    controller.input.value,
+  );
+  controller.visibleOptions = result.items;
+  controller.activeIndex = -1;
+  controller.input.removeAttribute("aria-activedescendant");
+  controller.count.textContent = result.truncated
+    ? `显示前 ${result.items.length} 条，共 ${result.matchedCount} 条`
+    : `${result.matchedCount} 条结果`;
+  controller.list.replaceChildren();
+  controller.resultButtons = [];
+  if (!result.items.length) {
+    controller.list.append(
+      element("div", "searchable-select-empty", "没有匹配结果，请更换关键词。"),
+    );
+    return;
+  }
+  result.items.forEach((option, index) => {
+    const button = element("button", "searchable-select-option");
+    button.type = "button";
+    button.id = `${controller.list.id}-option-${index}`;
+    button.setAttribute("role", "option");
+    button.setAttribute(
+      "aria-selected",
+      String(controller.select.value === option.value),
+    );
+    button.title = option.label;
+    button.append(element("strong", null, option.primary));
+    if (option.meta) button.append(element("small", null, option.meta));
+    button.addEventListener("pointerdown", (event) => event.preventDefault());
+    button.addEventListener("click", () =>
+      commitSearchableSelect(controller, option),
+    );
+    controller.resultButtons.push(button);
+    controller.list.append(button);
+  });
+}
+
+function moveSearchableSelectActive(controller, direction) {
+  if (!controller.visibleOptions.length) return;
+  const last = controller.visibleOptions.length - 1;
+  const next =
+    controller.activeIndex < 0
+      ? direction > 0
+        ? 0
+        : last
+      : Math.min(last, Math.max(0, controller.activeIndex + direction));
+  controller.resultButtons[controller.activeIndex]?.classList.remove(
+    "is-active",
+  );
+  controller.activeIndex = next;
+  const button = controller.resultButtons[next];
+  button.classList.add("is-active");
+  controller.input.setAttribute("aria-activedescendant", button.id);
+  button.scrollIntoView({ block: "nearest" });
+}
+
+function commitSearchableSelect(controller, option) {
+  if (controller.select.value !== option.value) {
+    controller.select.value = option.value;
+    controller.select.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  closeSearchableSelect(controller, true);
 }
 
 function refreshSearchableSelect(select, predicate = null) {
@@ -2407,8 +2623,17 @@ function syncSearchableSelect(select) {
   const option = [...select.options].find(
     (item) => item.value === select.value && item.value,
   );
-  controller.input.value = option?.textContent ?? "";
-  controller.input.disabled =
+  const label = (option?.textContent ?? "").trim();
+  const description = describeSearchableLabel(
+    label,
+    Number(select.dataset.searchPrimaryParts ?? "1"),
+  );
+  controller.currentPrimary.textContent =
+    description.primary || select.options[0]?.textContent || "暂无可选项";
+  controller.currentMeta.textContent = description.meta;
+  controller.currentMeta.classList.toggle("hidden", !description.meta);
+  controller.trigger.title = label;
+  controller.trigger.disabled =
     select.disabled || ![...select.options].some((item) => item.value);
 }
 

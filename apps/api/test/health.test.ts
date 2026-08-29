@@ -65,6 +65,9 @@ test("独立版首页和静态资源带安全响应头", async () => {
     const script = await fetch(`${baseUrl}/app.js`);
     const questionGenerator = await fetch(`${baseUrl}/question-generator.js`);
     const csrfApiClient = await fetch(`${baseUrl}/csrf-api-client.js`);
+    const searchableSelectCore = await fetch(
+      `${baseUrl}/searchable-select-core.js`,
+    );
     const reportCore = await fetch(`${baseUrl}/report-core.js`);
     const styles = await fetch(`${baseUrl}/styles.css`);
 
@@ -107,6 +110,8 @@ test("独立版首页和静态资源带安全响应头", async () => {
     assert.match(scriptText, /toggleTaskPreview/);
     assert.match(scriptText, /renderRunReport/);
     assert.match(scriptText, /setSearchableSelectValue/);
+    assert.match(scriptText, /renderSearchableSelectResults/);
+    assert.doesNotMatch(scriptText, /createElement\("datalist"\)/);
     assert.match(scriptText, /generateQuestions/);
     assert.match(scriptText, /refreshScopeSelector/);
     assert.match(scriptText, /updateRunCreateSummary/);
@@ -123,8 +128,13 @@ test("独立版首页和静态资源带安全响应头", async () => {
     assert.equal(reportCore.status, 200);
     assert.equal(questionGenerator.status, 200);
     assert.equal(csrfApiClient.status, 200);
+    assert.equal(searchableSelectCore.status, 200);
     assert.match(await questionGenerator.text(), /generateIndustryQuestions/);
     assert.match(await csrfApiClient.text(), /requestJsonWithCsrfRecovery/);
+    assert.match(
+      await searchableSelectCore.text(),
+      /SEARCHABLE_SELECT_RESULT_LIMIT/,
+    );
     assert.match(
       reportCore.headers.get("content-type") ?? "",
       /text\/javascript/,
@@ -142,6 +152,8 @@ test("独立版首页和静态资源带安全响应头", async () => {
     );
     assert.match(stylesText, /\.task-action-buttons/);
     assert.match(stylesText, /\.task-action-status/);
+    assert.match(stylesText, /\.searchable-select-popover/);
+    assert.match(stylesText, /\.searchable-select-option/);
   });
 });
 

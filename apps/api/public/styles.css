@@ -776,7 +776,7 @@ button:disabled {
 
 .project-switcher select,
 .sidebar-form input,
-.project-switcher .searchable-select input,
+.project-switcher .searchable-select-trigger,
 .sidebar-filter-grid input {
   border-color: rgba(255, 255, 255, 0.1);
   color: white;
@@ -1620,31 +1620,188 @@ button:disabled {
 }
 
 .searchable-select {
+  position: relative;
   min-width: 0;
   width: 100%;
 }
 
-.searchable-select input {
-  min-height: 42px;
-  padding-right: 32px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.searchable-select-trigger {
+  width: 100%;
+  min-height: 50px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  background: white;
+  box-shadow: none;
+  text-align: left;
+}
+
+.searchable-select-trigger:hover:not(:disabled) {
+  border-color: #b7baca;
+  background: #fbfbfe;
+  transform: none;
+}
+
+.searchable-select-trigger[aria-expanded="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(98, 92, 243, 0.12);
+}
+
+.searchable-select-trigger:disabled {
+  cursor: not-allowed;
+  color: #8d91a2;
+  background: #f1f2f6;
+}
+
+.searchable-select-current {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.searchable-select-current strong,
+.searchable-select-current small {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.searchable-select-current strong {
+  color: inherit;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.searchable-select-current small {
+  color: #9195a6;
+  font-size: 9px;
+  font-weight: 520;
+  line-height: 1.4;
+}
+
+.searchable-select-chevron {
+  align-self: center;
+  color: #8e92a4;
+  font-size: 16px;
+  line-height: 1;
+  transition: transform 0.16s ease;
+}
+
+.searchable-select-trigger[aria-expanded="true"] .searchable-select-chevron {
+  transform: rotate(180deg);
+}
+
+.searchable-select-popover {
+  position: fixed;
+  z-index: 1200;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid #dcdde7;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 20px 55px rgba(23, 28, 55, 0.18);
+  backdrop-filter: blur(14px);
+}
+
+.searchable-select-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.searchable-select-search-row input {
+  min-width: 0;
+  min-height: 40px;
+  padding: 9px 11px;
+}
+
+.searchable-select-count {
+  color: #8d91a2;
+  font-size: 9px;
+  font-weight: 650;
   white-space: nowrap;
 }
 
-.searchable-select::after {
-  content: "⌕";
-  position: absolute;
-  right: 11px;
-  top: 50%;
-  color: #9da1b1;
-  font-size: 13px;
-  pointer-events: none;
-  transform: translateY(-50%);
+.searchable-select-results {
+  min-height: 64px;
+  max-height: min(330px, 48vh);
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
-.searchable-select {
-  position: relative;
+.searchable-select-option {
+  min-height: 52px;
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: #31364c;
+  background: transparent;
+  text-align: left;
+}
+
+.searchable-select-option:hover:not(:disabled),
+.searchable-select-option.is-active {
+  border-color: #dedcf9;
+  background: #f3f2ff;
+  transform: none;
+}
+
+.searchable-select-option[aria-selected="true"] {
+  border-color: #cbc7fb;
+  background: #efedff;
+}
+
+.searchable-select-option strong,
+.searchable-select-option small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.searchable-select-option strong {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.searchable-select-option small {
+  color: #85899b;
+  font-size: 9px;
+  font-weight: 520;
+  line-height: 1.5;
+}
+
+.searchable-select-empty {
+  padding: 22px 12px;
+  border: 1px dashed #dedfe7;
+  border-radius: 9px;
+  color: #979baa;
+  font-size: 10px;
+  text-align: center;
+}
+
+.project-switcher .searchable-select-trigger strong {
+  color: white;
+}
+
+.project-switcher .searchable-select-trigger small {
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.project-switcher .searchable-select-trigger:hover:not(:disabled),
+.project-switcher .searchable-select-trigger[aria-expanded="true"] {
+  border-color: rgba(133, 126, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .searchable-select-source {
