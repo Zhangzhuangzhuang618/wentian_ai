@@ -725,7 +725,7 @@ async function updateAutomation(event) {
   if (
     enabled &&
     !window.confirm(
-      "打开只表示问天允许已授权的自动化任务，不代表豆包或千问已经授权，也不会绕过各平台的生产执行门禁。是否保存？",
+      "打开只表示问天允许已授权的自动化任务，不代表豆包、千问或 DeepSeek 已经授权，也不会绕过各平台的生产执行门禁。是否保存？",
     )
   ) {
     event.target.checked = false;
@@ -2768,7 +2768,9 @@ function runLabel(run) {
 }
 
 function surfaceName(surfaceCode) {
-  return surfaceCode === "qianwen_web" ? "千问 Web" : "豆包 Web";
+  if (surfaceCode === "qianwen_web") return "千问 Web";
+  if (surfaceCode === "deepseek_web") return "DeepSeek Web";
+  return "豆包 Web";
 }
 
 function statusElement(status) {

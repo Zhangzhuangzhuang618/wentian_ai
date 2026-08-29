@@ -11,11 +11,16 @@ import {
   preflightDoubaoPromptAutomation,
 } from "@wentian/consumer-doubao-web";
 import {
+  DEEPSEEK_WEB_ADAPTER_MANIFEST,
+  preflightDeepseekPromptAutomation,
+} from "@wentian/consumer-deepseek-web";
+import {
   QIANWEN_WEB_ADAPTER_MANIFEST,
   preflightQianwenPromptAutomation,
 } from "@wentian/consumer-qianwen-web";
 
 import type {
+  DeepseekAutomationRuntime,
   DoubaoAutomationRuntime,
   QianwenAutomationRuntime,
 } from "./doubao-automation-runtime.ts";
@@ -38,6 +43,7 @@ export interface DoubaoAutomationPreflightDependencies {
   readonly settings: ConsumerAutomationSettingsReader;
   readonly runtime: DoubaoAutomationRuntime;
   readonly qianwenRuntime?: QianwenAutomationRuntime;
+  readonly deepseekRuntime?: DeepseekAutomationRuntime;
   readonly now?: () => string;
 }
 
@@ -115,21 +121,20 @@ export class DoubaoAutomationPreflightService {
         ? DOUBAO_WEB_ADAPTER_MANIFEST
         : surface.surfaceCode === "qianwen_web"
           ? QIANWEN_WEB_ADAPTER_MANIFEST
-          : null;
+          : surface.surfaceCode === "deepseek_web"
+            ? DEEPSEEK_WEB_ADAPTER_MANIFEST
+            : null;
     if (!manifest) {
       throw new Error("CONSUMER_WEB_AUTOMATION_TASK_INCOMPATIBLE");
     }
     const runtime =
-      manifest.surfaceCode === "qianwen_web"
-        ? (this.dependencies.qianwenRuntime ??
-          Object.freeze({
-            environment: "production",
-            currentRegion: "CN_MAINLAND",
-            authorizationBasis: "none",
-            authorizationEvidenceId: null,
-            authorizationReviewedAt: null,
-          }))
-        : this.dependencies.runtime;
+      manifest.surfaceCode === "deepseek_web"
+        ? (this.dependencies.deepseekRuntime ??
+          defaultDisabledAutomationRuntime())
+        : manifest.surfaceCode === "qianwen_web"
+          ? (this.dependencies.qianwenRuntime ??
+            defaultDisabledAutomationRuntime())
+          : this.dependencies.runtime;
 
     const settings =
       await this.dependencies.settings.getConsumerAutomationSettingsForCapture(
@@ -139,8 +144,8 @@ export class DoubaoAutomationPreflightService {
       throw new Error("REGION_NOT_ALLOWED");
     }
     const preflight =
-      manifest.surfaceCode === "qianwen_web"
-        ? preflightQianwenPromptAutomation({
+      manifest.surfaceCode === "deepseek_web"
+        ? preflightDeepseekPromptAutomation({
             automationEnabled: settings.automationEnabled,
             environment: runtime.environment,
             currentRegion: runtime.currentRegion,
@@ -150,16 +155,27 @@ export class DoubaoAutomationPreflightService {
             now: occurredAt,
             transport: "visible_page",
           })
-        : preflightDoubaoPromptAutomation({
-            automationEnabled: settings.automationEnabled,
-            environment: runtime.environment,
-            currentRegion: runtime.currentRegion,
-            authorizationBasis: runtime.authorizationBasis,
-            authorizationEvidenceId: runtime.authorizationEvidenceId,
-            authorizationReviewedAt: runtime.authorizationReviewedAt,
-            now: occurredAt,
-            transport: "visible_page",
-          });
+        : manifest.surfaceCode === "qianwen_web"
+          ? preflightQianwenPromptAutomation({
+              automationEnabled: settings.automationEnabled,
+              environment: runtime.environment,
+              currentRegion: runtime.currentRegion,
+              authorizationBasis: runtime.authorizationBasis,
+              authorizationEvidenceId: runtime.authorizationEvidenceId,
+              authorizationReviewedAt: runtime.authorizationReviewedAt,
+              now: occurredAt,
+              transport: "visible_page",
+            })
+          : preflightDoubaoPromptAutomation({
+              automationEnabled: settings.automationEnabled,
+              environment: runtime.environment,
+              currentRegion: runtime.currentRegion,
+              authorizationBasis: runtime.authorizationBasis,
+              authorizationEvidenceId: runtime.authorizationEvidenceId,
+              authorizationReviewedAt: runtime.authorizationReviewedAt,
+              now: occurredAt,
+              transport: "visible_page",
+            });
     if (!preflight.allowed) {
       throw new Error(preflight.blockReason!);
     }
@@ -177,6 +193,16 @@ export class DoubaoAutomationPreflightService {
       tokenExpiresAt: claims.expiresAt,
     });
   }
+}
+
+function defaultDisabledAutomationRuntime(): DoubaoAutomationRuntime {
+  return Object.freeze({
+    environment: "production",
+    currentRegion: "CN_MAINLAND",
+    authorizationBasis: "none",
+    authorizationEvidenceId: null,
+    authorizationReviewedAt: null,
+  });
 }
 
 export function buildConsumerExperimentPrompt(

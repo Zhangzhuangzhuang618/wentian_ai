@@ -12,6 +12,7 @@ COPY packages/domain/package.json packages/domain/package.json
 COPY packages/infrastructure/package.json packages/infrastructure/package.json
 COPY packages/adapters/consumer-doubao-web/package.json packages/adapters/consumer-doubao-web/package.json
 COPY packages/adapters/consumer-qianwen-web/package.json packages/adapters/consumer-qianwen-web/package.json
+COPY packages/adapters/consumer-deepseek-web/package.json packages/adapters/consumer-deepseek-web/package.json
 
 RUN pnpm install --frozen-lockfile
 

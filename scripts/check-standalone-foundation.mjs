@@ -146,6 +146,23 @@ for (const requiredFact of [
   }
 }
 
+const deepseekSurfaceMigration = await readFile(
+  path.join(migrationsDirectory, "0011_deepseek_web_surface.sql"),
+  "utf8",
+);
+for (const requiredFact of [
+  "deepseek_web",
+  "DeepSeek 网页版",
+  "deepseek-web@1-visible-page",
+  '"sourcePanel": false',
+  "browser_assisted",
+  "manual_import",
+]) {
+  if (!deepseekSurfaceMigration.includes(requiredFact)) {
+    throw new Error(`DEEPSEEK_SURFACE_MIGRATION_FACT_MISSING:${requiredFact}`);
+  }
+}
+
 const nominationMigration = await readFile(
   path.join(migrationsDirectory, "0003_source_nomination_comparison.sql"),
   "utf8",

@@ -68,6 +68,28 @@ test("千问任务返回千问官网页面签名且使用独立自动化门禁",
   );
 });
 
+test("DeepSeek 任务返回独立官网页面签名且使用独立自动化门禁", async () => {
+  const fixture = await createFixture({
+    automationEnabled: true,
+    surfaceCode: "deepseek_web",
+    authorizationBasis: "written_permission",
+    authorizationEvidenceId: "AUTH-DEEPSEEK-001",
+  });
+
+  const result = await fixture.service.execute({
+    taskId: ids.task,
+    taskVersion: 2,
+    captureToken: "capture-token",
+  });
+
+  assert.equal(result.surfaceCode, "deepseek_web");
+  assert.equal(result.expectedPageOrigin, "https://chat.deepseek.com");
+  assert.equal(
+    result.pageSignatureVersion,
+    "deepseek-web-signature@1-visible-page",
+  );
+});
+
 test("项目开关关闭或生产授权缺失时失败关闭", async () => {
   const disabled = await createFixture({ automationEnabled: false });
   await assert.rejects(
@@ -177,7 +199,7 @@ async function createFixture(options: {
   readonly authorizationEvidenceId?: string | null;
   readonly tokenExpiresAt?: string;
   readonly authorizationReviewedAt?: string | null;
-  readonly surfaceCode?: "doubao_web" | "qianwen_web";
+  readonly surfaceCode?: "doubao_web" | "qianwen_web" | "deepseek_web";
 }) {
   const surfaceCode = options.surfaceCode ?? "doubao_web";
   const snapshot = createQuerySetSnapshot({
@@ -201,11 +223,18 @@ async function createFixture(options: {
   const surface = createConsumerSurfaceProfileVersion({
     id: ids.surface,
     surfaceCode,
-    productLabel: surfaceCode === "qianwen_web" ? "千问网页版" : "豆包网页版",
+    productLabel:
+      surfaceCode === "qianwen_web"
+        ? "千问网页版"
+        : surfaceCode === "deepseek_web"
+          ? "DeepSeek 网页版"
+          : "豆包网页版",
     adapterVersion:
       surfaceCode === "qianwen_web"
         ? "qianwen-web@2-visible-reference-panel"
-        : "doubao-web@1-attended",
+        : surfaceCode === "deepseek_web"
+          ? "deepseek-web@1-visible-page"
+          : "doubao-web@1-attended",
     allowedCollectionMethods: ["browser_assisted"],
     visibleSourceCapabilities: {
       visibleCitations: true,
@@ -303,6 +332,21 @@ async function createFixture(options: {
             : options.authorizationReviewedAt,
       },
       qianwenRuntime: {
+        environment: "production",
+        currentRegion: "CN_MAINLAND",
+        authorizationBasis: options.authorizationBasis ?? "none",
+        authorizationEvidenceId:
+          options.authorizationEvidenceId === undefined
+            ? null
+            : options.authorizationEvidenceId,
+        authorizationReviewedAt:
+          options.authorizationReviewedAt === undefined
+            ? options.authorizationEvidenceId
+              ? "2026-08-24T00:00:00.000Z"
+              : null
+            : options.authorizationReviewedAt,
+      },
+      deepseekRuntime: {
         environment: "production",
         currentRegion: "CN_MAINLAND",
         authorizationBasis: options.authorizationBasis ?? "none",

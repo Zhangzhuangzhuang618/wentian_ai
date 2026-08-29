@@ -90,6 +90,7 @@ test("独立版首页和静态资源带安全响应头", async () => {
     assert.match(pageText, /id="run-create-summary"/);
     assert.match(pageText, /id="run-surface"/);
     assert.match(pageText, /value="qianwen_web"/);
+    assert.match(pageText, /value="deepseek_web"/);
     assert.match(pageText, /id="task-run-context"/);
     assert.match(pageText, /class="task-action-buttons"/);
     assert.match(pageText, /class="task-action-status"/);

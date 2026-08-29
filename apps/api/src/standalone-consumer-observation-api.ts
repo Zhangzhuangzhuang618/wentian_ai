@@ -78,6 +78,7 @@ import {
 
 import type { LocalAccessApiService } from "./local-access-api.ts";
 import type {
+  DeepseekAutomationRuntime,
   DoubaoAutomationRuntime,
   QianwenAutomationRuntime,
 } from "./doubao-automation-runtime.ts";
@@ -123,6 +124,7 @@ export interface StandaloneConsumerObservationApiOptions {
   readonly automationSettings: ConsumerAutomationSettingsReader;
   readonly automationRuntime: DoubaoAutomationRuntime;
   readonly qianwenAutomationRuntime?: QianwenAutomationRuntime;
+  readonly deepseekAutomationRuntime?: DeepseekAutomationRuntime;
   readonly publicOrigin: string;
   readonly systemInstanceId: string;
   readonly scopes: ScopeRepository;
@@ -201,6 +203,15 @@ export function createStandaloneConsumerObservationApiHandler(
     runtime: options.automationRuntime,
     qianwenRuntime:
       options.qianwenAutomationRuntime ??
+      Object.freeze({
+        environment: "production",
+        currentRegion: "CN_MAINLAND",
+        authorizationBasis: "none",
+        authorizationEvidenceId: null,
+        authorizationReviewedAt: null,
+      }),
+    deepseekRuntime:
+      options.deepseekAutomationRuntime ??
       Object.freeze({
         environment: "production",
         currentRegion: "CN_MAINLAND",

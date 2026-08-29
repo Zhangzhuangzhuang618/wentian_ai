@@ -144,3 +144,6 @@
 - [WT-084 深度自审](./reviews/WT084-DEEP-SELF-REVIEW-2026-08-26.md)
 - [WT-085 页面旧 CSRF 令牌自动恢复](./tasks/WT-085-CSRF-TOKEN-RECOVERY.md)
 - [WT-086 大量动态数据选择器](./tasks/WT-086-LARGE-DYNAMIC-SELECTOR.md)
+- [DeepSeek Web 消费端观察 Surface 决策](./decisions/DEC-WT087-001-DEEPSEEK-WEB-SURFACE.md)
+- [WT-087 接入 DeepSeek Web 消费端观察](./tasks/WT-087-DEEPSEEK-WEB-SURFACE.md)
+- [WT-087 深度自审](./reviews/WT087-DEEP-SELF-REVIEW-2026-08-29.md)

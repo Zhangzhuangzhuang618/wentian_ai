@@ -1,5 +1,6 @@
 import { createWentianApiServer } from "./server.ts";
 import {
+  loadDeepseekAutomationRuntime,
   loadDoubaoAutomationRuntime,
   loadQianwenAutomationRuntime,
 } from "./doubao-automation-runtime.ts";
@@ -39,6 +40,7 @@ const publicOrigin =
   process.env.WENTIAN_PUBLIC_ORIGIN?.trim() ?? `http://127.0.0.1:${port}`;
 const doubaoAutomationRuntime = loadDoubaoAutomationRuntime(process.env);
 const qianwenAutomationRuntime = loadQianwenAutomationRuntime(process.env);
+const deepseekAutomationRuntime = loadDeepseekAutomationRuntime(process.env);
 const localAccessService =
   databasePool && sessionSecret
     ? new PostgresLocalAccessService({
@@ -101,6 +103,7 @@ const standaloneConsumerObservationApi =
         publicOrigin,
         automationRuntime: doubaoAutomationRuntime,
         qianwenAutomationRuntime,
+        deepseekAutomationRuntime,
       })
     : null;
 const getReadinessChecks = createStandaloneReadinessChecker({
@@ -175,6 +178,9 @@ function createStandaloneConsumerRuntime(input: {
   readonly qianwenAutomationRuntime: ReturnType<
     typeof loadQianwenAutomationRuntime
   >;
+  readonly deepseekAutomationRuntime: ReturnType<
+    typeof loadDeepseekAutomationRuntime
+  >;
 }) {
   const observations = new PostgresConsumerObservationRepository(
     input.databasePool,
@@ -198,6 +204,7 @@ function createStandaloneConsumerRuntime(input: {
     automationSettings: input.localAccessService,
     automationRuntime: input.automationRuntime,
     qianwenAutomationRuntime: input.qianwenAutomationRuntime,
+    deepseekAutomationRuntime: input.deepseekAutomationRuntime,
     publicOrigin: input.publicOrigin,
     systemInstanceId: input.systemInstanceId,
     scopes: new PostgresScopeRepository(input.databasePool),

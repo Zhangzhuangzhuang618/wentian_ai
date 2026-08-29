@@ -29,6 +29,9 @@ importers:
       "@wentian/application":
         specifier: workspace:*
         version: link:../../packages/application
+      "@wentian/consumer-deepseek-web":
+        specifier: workspace:*
+        version: link:../../packages/adapters/consumer-deepseek-web
       "@wentian/consumer-doubao-web":
         specifier: workspace:*
         version: link:../../packages/adapters/consumer-doubao-web
@@ -44,6 +47,12 @@ importers:
       "@wentian/infrastructure":
         specifier: workspace:*
         version: link:../../packages/infrastructure
+
+  packages/adapters/consumer-deepseek-web:
+    dependencies:
+      "@wentian/domain":
+        specifier: workspace:*
+        version: link:../../domain
 
   packages/adapters/consumer-doubao-web:
     dependencies:

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  loadDeepseekAutomationRuntime,
   loadDoubaoAutomationRuntime,
   loadQianwenAutomationRuntime,
 } from "../src/doubao-automation-runtime.ts";
@@ -21,6 +22,23 @@ test("千问使用独立部署变量且生产配置默认没有授权", () => {
     loadQianwenAutomationRuntime({
       WENTIAN_DOUBAO_AUTOMATION_ENVIRONMENT: "synthetic",
       WENTIAN_QIANWEN_AUTOMATION_ENVIRONMENT: "production",
+    }),
+    {
+      environment: "production",
+      currentRegion: "CN_MAINLAND",
+      authorizationBasis: "none",
+      authorizationEvidenceId: null,
+      authorizationReviewedAt: null,
+    },
+  );
+});
+
+test("DeepSeek 使用独立部署变量且生产配置默认没有授权", () => {
+  assert.deepEqual(
+    loadDeepseekAutomationRuntime({
+      WENTIAN_DOUBAO_AUTOMATION_ENVIRONMENT: "synthetic",
+      WENTIAN_QIANWEN_AUTOMATION_ENVIRONMENT: "synthetic",
+      WENTIAN_DEEPSEEK_AUTOMATION_ENVIRONMENT: "production",
     }),
     {
       environment: "production",

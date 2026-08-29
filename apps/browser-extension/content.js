@@ -7,8 +7,12 @@
   const core = globalScope.WentianCaptureCore;
   const automationCore = globalScope.WentianAutomationCore;
   const activeSurface = () => core.getSurfaceForPageUrl(location.href);
-  const productName = () =>
-    activeSurface()?.surfaceCode === "qianwen_web" ? "千问" : "豆包";
+  const productName = () => {
+    const surfaceCode = activeSurface()?.surfaceCode;
+    if (surfaceCode === "qianwen_web") return "千问";
+    if (surfaceCode === "deepseek_web") return "DeepSeek";
+    return "豆包";
+  };
   const state = {
     active: false,
     candidate: null,
@@ -311,9 +315,16 @@
   }
 
   function isBlankChatPath(pathname = location.pathname) {
-    return activeSurface()?.surfaceCode === "qianwen_web"
-      ? pathname === "/" || pathname === "/chat" || pathname === "/chat/"
-      : pathname === "/chat" || pathname === "/chat/";
+    const surfaceCode = activeSurface()?.surfaceCode;
+    if (surfaceCode === "qianwen_web") {
+      return pathname === "/" || pathname === "/chat" || pathname === "/chat/";
+    }
+    if (surfaceCode === "deepseek_web") {
+      return (
+        pathname === "/" || pathname === "/a/chat" || pathname === "/a/chat/"
+      );
+    }
+    return pathname === "/chat" || pathname === "/chat/";
   }
 
   function isChatPath() {

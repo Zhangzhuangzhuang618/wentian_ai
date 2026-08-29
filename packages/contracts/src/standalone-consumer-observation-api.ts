@@ -213,6 +213,7 @@ export const standaloneAutomationPreflightResponseSchema = z
     expected_page_origin: z.enum([
       "https://www.doubao.com",
       "https://www.qianwen.com",
+      "https://chat.deepseek.com",
     ]),
     page_signature_version: z.string().min(1).max(120),
     token_expires_at: z.iso.datetime({ offset: true }),

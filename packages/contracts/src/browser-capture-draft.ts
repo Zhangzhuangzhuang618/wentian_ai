@@ -90,11 +90,12 @@ export const browserCaptureDraftSchema = z
       .max(100),
     visible_metadata: z
       .object({
-        product_label: z.enum(["豆包网页版", "千问网页版"]),
+        product_label: z.enum(["豆包网页版", "千问网页版", "DeepSeek 网页版"]),
         page_title: z.string().trim().min(1).max(500),
         page_origin: z.enum([
           "https://www.doubao.com",
           "https://www.qianwen.com",
+          "https://chat.deepseek.com",
         ]),
         search_mode: z.literal("unknown"),
         observed_at: z.iso.datetime({ offset: true }),

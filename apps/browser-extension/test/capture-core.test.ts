@@ -173,6 +173,44 @@ test("千问官网回答生成独立Surface草稿并通过严格契约", () => {
   assert.doesNotThrow(() => browserCaptureDraftSchema.parse(payload));
 });
 
+test("DeepSeek 聊天回答生成独立 Surface 草稿并通过严格契约", () => {
+  const payload = core.createDraftCapturePayload({
+    userInitiated: true,
+    pageOrigin: "https://chat.deepseek.com",
+    pageUrl: "https://chat.deepseek.com/a/chat/s/example",
+    pageTitle: "DeepSeek",
+    observedAt: "2026-08-29T10:00:00.000Z",
+    answerText: fixture,
+    visibleLinks: [{ url: "https://example.com/source", label: "示例信源" }],
+    selectedRegionScreenshotDataUrl: "data:image/png;base64,AA==",
+  });
+
+  assert.equal(payload.surface_code, "deepseek_web");
+  assert.equal(payload.visible_metadata.product_label, "DeepSeek 网页版");
+  assert.equal(
+    payload.visible_metadata.page_origin,
+    "https://chat.deepseek.com",
+  );
+  assert.doesNotThrow(() => browserCaptureDraftSchema.parse(payload));
+});
+
+test("DeepSeek 登录页不属于可采集聊天路径", () => {
+  assert.throws(
+    () =>
+      core.createDraftCapturePayload({
+        userInitiated: true,
+        pageOrigin: "https://chat.deepseek.com",
+        pageUrl: "https://chat.deepseek.com/sign_in",
+        pageTitle: "DeepSeek",
+        observedAt: "2026-08-29T10:00:00.000Z",
+        answerText: fixture,
+        visibleLinks: [],
+        selectedRegionScreenshotDataUrl: "data:image/png;base64,AA==",
+      }),
+    /CAPTURE_PAGE_NOT_ALLOWED/,
+  );
+});
+
 test("非用户触发、错误来源或无截图时失败关闭", () => {
   const baseInput = {
     userInitiated: true,

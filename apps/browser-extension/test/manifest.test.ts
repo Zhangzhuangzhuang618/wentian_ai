@@ -12,7 +12,7 @@ const implementation = await Promise.all(
 );
 
 test("扩展只申请当前页、脚本注入和千问临时来源标签权限", () => {
-  assert.equal(manifest.version, "0.0.21");
+  assert.equal(manifest.version, "0.0.22");
   assert.deepEqual(manifest.permissions, ["activeTab", "scripting", "tabs"]);
   assert.deepEqual(manifest.host_permissions, [
     "http://127.0.0.1/*",

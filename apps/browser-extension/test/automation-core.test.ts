@@ -68,6 +68,10 @@ test("参考资料入口只识别有界数量并优先绑定当前回答", () =>
     core.pageSignatureVersion("qianwen_web"),
     "qianwen-web-signature@2-visible-reference-panel",
   );
+  assert.equal(
+    core.pageSignatureVersion("deepseek_web"),
+    "deepseek-web-signature@1-visible-page",
+  );
 
   const stale = {
     id: "stale",
@@ -267,6 +271,22 @@ test("千问空白新对话占位文本不会被误判为已有输入", () => {
   );
 });
 
+test("DeepSeek 空白编辑器占位文本不会被误判为已有输入", () => {
+  assert.equal(core.isBlankComposerText("", "deepseek_web"), true);
+  assert.equal(
+    core.isBlankComposerText("给 DeepSeek 发送消息", "deepseek_web"),
+    true,
+  );
+  assert.equal(
+    core.isBlankComposerText("Message DeepSeek", "deepseek_web"),
+    true,
+  );
+  assert.equal(
+    core.isBlankComposerText("广州搬家公司哪家好？", "deepseek_web"),
+    false,
+  );
+});
+
 test("千问展开侧边栏的新建对话入口可被识别", () => {
   assert.equal(core.isNewConversationLabel("新对话"), true);
   assert.equal(core.isNewConversationLabel("新建对话"), true);
@@ -276,4 +296,6 @@ test("千问展开侧边栏的新建对话入口可被识别", () => {
   assert.equal(core.isNewConversationLabel("新建对话\n⌘ K"), true);
   assert.equal(core.isNewConversationLabel("新建新对话"), false);
   assert.equal(core.isNewConversationLabel("新建工作任务"), false);
+  assert.equal(core.isNewConversationLabel("New chat"), true);
+  assert.equal(core.isNewConversationLabel("New conversation"), true);
 });

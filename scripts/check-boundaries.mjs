@@ -9,6 +9,7 @@ const sourceRoots = [
   "packages/infrastructure/src",
   "packages/adapters/consumer-doubao-web/src",
   "packages/adapters/consumer-qianwen-web/src",
+  "packages/adapters/consumer-deepseek-web/src",
   "apps/api/src",
 ];
 
@@ -19,12 +20,14 @@ const allowedWentianImports = new Map([
   ["packages/infrastructure/src", ["@wentian/application", "@wentian/domain"]],
   ["packages/adapters/consumer-doubao-web/src", ["@wentian/domain"]],
   ["packages/adapters/consumer-qianwen-web/src", ["@wentian/domain"]],
+  ["packages/adapters/consumer-deepseek-web/src", ["@wentian/domain"]],
   [
     "apps/api/src",
     [
       "@wentian/application",
       "@wentian/consumer-doubao-web",
       "@wentian/consumer-qianwen-web",
+      "@wentian/consumer-deepseek-web",
       "@wentian/contracts",
       "@wentian/infrastructure",
     ],

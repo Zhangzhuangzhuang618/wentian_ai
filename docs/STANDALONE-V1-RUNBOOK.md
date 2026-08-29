@@ -2,9 +2,9 @@
 
 ## 1. 组成与边界
 
-第一版包含Web界面、API、本地账号、PostgreSQL 16、S3兼容对象存储、迁移、豆包/千问可见页面采集、保留期清理和项目删除。第一版运行不依赖Redis、独立Worker、GEO连接器或第三方模型API。
+第一版包含Web界面、API、本地账号、PostgreSQL 16、S3兼容对象存储、迁移、豆包/千问/DeepSeek可见页面采集、保留期清理和项目删除。第一版运行不依赖Redis、独立Worker、GEO连接器或第三方模型API。
 
-自动化开关默认关闭。浏览器可见页面驱动已经具备开发态实现，但豆包和千问的部署默认授权依据均为`none`；即使项目Owner打开开关，未接入对应平台书面授权证据前，服务端预检仍会阻止生产自动提问。
+自动化开关默认关闭。浏览器可见页面驱动已经具备开发态实现，但豆包、千问和DeepSeek的部署默认授权依据均为`none`；即使项目Owner打开开关，未接入对应平台书面授权证据前，服务端预检仍会阻止生产自动提问。
 
 ## 2. 准备配置
 
@@ -19,7 +19,7 @@ WENTIAN_SESSION_SECRET
 
 `WENTIAN_SESSION_SECRET`至少32字节。不得提交`.env`、Owner密码或初始化令牌。默认仅监听`127.0.0.1`；需要远程访问时，应由部署人员配置HTTPS反向代理，并将`WENTIAN_PUBLIC_ORIGIN`设为真实HTTPS来源、`WENTIAN_COOKIE_SECURE`设为`true`。
 
-豆包与千问使用彼此独立的自动化部署变量。默认如下，开发和手动采集阶段保持不变：
+三个平台使用彼此独立的自动化部署变量。默认如下，开发和手动采集阶段保持不变：
 
 ```text
 WENTIAN_DOUBAO_AUTOMATION_ENVIRONMENT=production
@@ -30,6 +30,10 @@ WENTIAN_QIANWEN_AUTOMATION_ENVIRONMENT=production
 WENTIAN_QIANWEN_AUTOMATION_AUTHORIZATION_BASIS=none
 WENTIAN_QIANWEN_AUTOMATION_AUTHORIZATION_EVIDENCE_ID=
 WENTIAN_QIANWEN_AUTOMATION_AUTHORIZATION_REVIEWED_AT=
+WENTIAN_DEEPSEEK_AUTOMATION_ENVIRONMENT=production
+WENTIAN_DEEPSEEK_AUTOMATION_AUTHORIZATION_BASIS=none
+WENTIAN_DEEPSEEK_AUTOMATION_AUTHORIZATION_EVIDENCE_ID=
+WENTIAN_DEEPSEEK_AUTOMATION_AUTHORIZATION_REVIEWED_AT=
 ```
 
 只有取得适用于可见网页自动化的书面许可，并由项目Owner和合规责任人确认后，才能把依据改为`written_permission`，填写证据编号和本次复核的ISO-8601时间。复核时间超过90天、缺失或位于未来时自动阻断。`official_interface`只适用于官方接口驱动，不能放行浏览器网页驱动。
@@ -75,13 +79,13 @@ docker compose run --rm \
 
 成功后删除五个临时变量。第二次初始化必须返回`OWNER_ALREADY_INITIALIZED`，不存在默认密码或第二个初始Owner旁路。
 
-## 5. 使用豆包或千问可见页面采集
+## 5. 使用豆包、千问或DeepSeek可见页面采集
 
 1. 登录问天，创建项目和问题集；
 2. 创建“自然回答”运行；
 3. 在任务页选择运行：单题采集时领取任务并复制一次性接入码；整批采集时点击“整批接入”并复制整批接入码；
 4. 在Chrome扩展管理页打开“开发者模式”，加载`apps/browser-extension/`；
-5. 打开与运行观察对象一致、且已登录的豆包或千问页面，点击扩展；
+5. 打开与运行观察对象一致、且已登录的豆包、千问或DeepSeek页面，点击扩展；
 6. 自动化开关和上线门禁已满足时，可粘贴单题接入码并选择“自动采集单题”；扩展会等待回答稳定后进入本地预览；
 7. 小规模连续实验可粘贴整批接入码并选择“连续采集整批”；扩展会在当前 AI 页面逐题建立新对话、发送、采集并提交，失败时暂停，用户可重试或停止；
 8. 门禁未满足或页面结构不匹配时，选择“手动选择当前回答”，由用户发送问题并单击回答区域；
@@ -89,7 +93,7 @@ docker compose run --rm \
 10. 回到问天逐项完成最终确认或拒绝；
 11. 如需对照，再创建与该自然回答运行配对的“信源推荐”运行并复核域名。
 
-单题接入码只绑定一个任务、一个用户和本机问天地址，十分钟到期且只能使用一次。整批接入码绑定一个运行、一个用户和本机问天地址，两小时到期，只能领取该运行中的待采集任务；每题上传仍使用新签发的一次性凭证。扩展不读取豆包或千问的Cookie、密码、Token、localStorage或隐藏网络响应。
+单题接入码只绑定一个任务、一个用户和本机问天地址，十分钟到期且只能使用一次。整批接入码绑定一个运行、一个用户和本机问天地址，两小时到期，只能领取该运行中的待采集任务；每题上传仍使用新签发的一次性凭证。扩展不读取任何平台的Cookie、密码、Token、localStorage或隐藏网络响应。
 
 ## 6. 排名与可比口径
 
@@ -120,7 +124,7 @@ docker compose --profile maintenance run --rm retention
 ## 8. 迁移、备份与升级
 
 - 首个迁移固定为`0001_standalone_foundation.sql`；
-- 当前连续迁移为`0001`至`0009`；
+- 当前连续迁移为`0001`至`0011`；
 - 不得修改、改名或重排已应用迁移；
 - 迁移运行器校验文件SHA-256并使用数据库锁；
 - 升级前同时备份PostgreSQL和对象存储，恢复演练必须在隔离实例进行；

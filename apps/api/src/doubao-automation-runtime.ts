@@ -8,6 +8,7 @@ export interface DoubaoAutomationRuntime {
 }
 
 export type QianwenAutomationRuntime = DoubaoAutomationRuntime;
+export type DeepseekAutomationRuntime = DoubaoAutomationRuntime;
 
 export function loadDoubaoAutomationRuntime(
   environment: Readonly<Record<string, string | undefined>>,
@@ -21,9 +22,15 @@ export function loadQianwenAutomationRuntime(
   return loadConsumerAutomationRuntime(environment, "QIANWEN");
 }
 
+export function loadDeepseekAutomationRuntime(
+  environment: Readonly<Record<string, string | undefined>>,
+): DeepseekAutomationRuntime {
+  return loadConsumerAutomationRuntime(environment, "DEEPSEEK");
+}
+
 function loadConsumerAutomationRuntime(
   environment: Readonly<Record<string, string | undefined>>,
-  surface: "DOUBAO" | "QIANWEN",
+  surface: "DOUBAO" | "QIANWEN" | "DEEPSEEK",
 ): DoubaoAutomationRuntime {
   const runtimeEnvironment =
     environment[`WENTIAN_${surface}_AUTOMATION_ENVIRONMENT`]?.trim() ||

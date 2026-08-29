@@ -5,6 +5,7 @@
   "type": "module",
   "dependencies": {
     "@wentian/application": "workspace:*",
+    "@wentian/consumer-deepseek-web": "workspace:*",
     "@wentian/consumer-doubao-web": "workspace:*",
     "@wentian/consumer-qianwen-web": "workspace:*",
     "@wentian/contracts": "workspace:*",

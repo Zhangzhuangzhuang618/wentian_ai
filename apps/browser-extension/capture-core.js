@@ -14,6 +14,11 @@
       productLabel: "千问网页版",
       origin: "https://www.qianwen.com",
     }),
+    deepseek_web: Object.freeze({
+      surfaceCode: "deepseek_web",
+      productLabel: "DeepSeek 网页版",
+      origin: "https://chat.deepseek.com",
+    }),
   });
   const DRAFT_SCHEMA_VERSION = "wentian-consumer-capture@0-draft";
 
@@ -245,16 +250,33 @@
         (candidate) => candidate.origin === url.origin,
       );
       if (!surface || url.username || url.password) return null;
-      const allowedPath =
-        surface.surfaceCode === "doubao_web"
-          ? url.pathname === "/chat" || url.pathname.startsWith("/chat/")
-          : url.pathname === "/" ||
-            url.pathname.startsWith("/chat") ||
-            url.pathname.startsWith("/conversation");
+      const allowedPath = isAllowedSurfacePath(
+        surface.surfaceCode,
+        url.pathname,
+      );
       return allowedPath ? surface : null;
     } catch {
       return null;
     }
+  }
+
+  function isAllowedSurfacePath(surfaceCode, pathname) {
+    if (surfaceCode === "doubao_web") {
+      return pathname === "/chat" || pathname.startsWith("/chat/");
+    }
+    if (surfaceCode === "qianwen_web") {
+      return (
+        pathname === "/" ||
+        pathname.startsWith("/chat") ||
+        pathname.startsWith("/conversation")
+      );
+    }
+    return (
+      surfaceCode === "deepseek_web" &&
+      (pathname === "/" ||
+        pathname === "/a/chat" ||
+        pathname.startsWith("/a/chat/"))
+    );
   }
 
   function isAllowedPageUrl(value) {

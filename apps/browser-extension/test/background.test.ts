@@ -225,6 +225,33 @@ test("千问官网页面允许启动采集界面而其他千问页面失败关�
   ]);
 });
 
+test("DeepSeek 对话页允许启动采集界面而登录页失败关闭", async () => {
+  const harness = createBackgroundHarness();
+  runInNewContext(backgroundSource, {
+    chrome: harness.chrome,
+    URL,
+    fetch: harness.fetch,
+    atob,
+    TextDecoder,
+    setTimeout: () => 0,
+  });
+  const listener = harness.getActionListener();
+  assert.ok(listener);
+
+  await listener({ id: 4, url: "https://chat.deepseek.com/sign_in" });
+  assert.equal(harness.injected.length, 0);
+  await listener({
+    id: 4,
+    url: "https://chat.deepseek.com/a/chat/s/example",
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.injected)), [
+    {
+      target: { tabId: 4 },
+      files: ["capture-core.js", "automation-core.js", "content.js"],
+    },
+  ]);
+});
+
 test("千问来源监听只读取当前页打开的外部标签并关闭返回", async () => {
   const harness = createBackgroundHarness();
   runInNewContext(backgroundSource, {

@@ -7,6 +7,10 @@ const SURFACES = Object.freeze({
     origin: "https://www.qianwen.com",
     pageSignatureVersion: "qianwen-web-signature@2-visible-reference-panel",
   }),
+  deepseek_web: Object.freeze({
+    origin: "https://chat.deepseek.com",
+    pageSignatureVersion: "deepseek-web-signature@1-visible-page",
+  }),
 });
 
 const REFERENCE_SOURCE_WATCH_TIMEOUT_MS = 10_000;
@@ -673,18 +677,33 @@ function toAutomationBatchErrorMessage(code) {
 function getSurfaceForPage(value) {
   try {
     const url = new URL(value ?? "");
-    const entry = Object.entries(SURFACES).find(([, candidate]) => {
+    const entry = Object.entries(SURFACES).find(([surfaceCode, candidate]) => {
       if (candidate.origin !== url.origin) return false;
-      return url.origin === "https://www.doubao.com"
-        ? url.pathname === "/chat" || url.pathname.startsWith("/chat/")
-        : url.pathname === "/" ||
-            url.pathname.startsWith("/chat") ||
-            url.pathname.startsWith("/conversation");
+      return isAllowedSurfacePath(surfaceCode, url.pathname);
     });
     return entry ? Object.freeze({ surfaceCode: entry[0], ...entry[1] }) : null;
   } catch {
     return null;
   }
+}
+
+function isAllowedSurfacePath(surfaceCode, pathname) {
+  if (surfaceCode === "doubao_web") {
+    return pathname === "/chat" || pathname.startsWith("/chat/");
+  }
+  if (surfaceCode === "qianwen_web") {
+    return (
+      pathname === "/" ||
+      pathname.startsWith("/chat") ||
+      pathname.startsWith("/conversation")
+    );
+  }
+  return (
+    surfaceCode === "deepseek_web" &&
+    (pathname === "/" ||
+      pathname === "/a/chat" ||
+      pathname.startsWith("/a/chat/"))
+  );
 }
 
 async function showBadge(tabId, text, color) {
