@@ -6,7 +6,7 @@
   const PAGE_SIGNATURE_VERSIONS = Object.freeze({
     doubao_web: "doubao-web-signature@6-visible-reference-panel",
     qianwen_web: "qianwen-web-signature@2-visible-reference-panel",
-    deepseek_web: "deepseek-web-signature@1-visible-page",
+    deepseek_web: "deepseek-web-signature@2-visible-page",
   });
   const MIN_ANSWER_LENGTH = 80;
   const STABLE_ANSWER_MS = 5_000;
@@ -137,7 +137,7 @@
 
   function isNewConversationLabel(value) {
     const label = normalizeText(value);
-    return /^(?:(?:新对话|新建对话|创建对话|开启对话|发起对话)(?:\s.*)?|new\s+(?:chat|conversation))$/i.test(
+    return /^(?:(?:新对话|新建对话|创建对话|开启(?:新)?对话|发起对话)(?:\s.*)?|new\s+(?:chat|conversation))$/i.test(
       label,
     );
   }

@@ -70,7 +70,7 @@ test("参考资料入口只识别有界数量并优先绑定当前回答", () =>
   );
   assert.equal(
     core.pageSignatureVersion("deepseek_web"),
-    "deepseek-web-signature@1-visible-page",
+    "deepseek-web-signature@2-visible-page",
   );
 
   const stale = {
@@ -292,6 +292,7 @@ test("千问展开侧边栏的新建对话入口可被识别", () => {
   assert.equal(core.isNewConversationLabel("新建对话"), true);
   assert.equal(core.isNewConversationLabel("创建对话"), true);
   assert.equal(core.isNewConversationLabel("开启对话"), true);
+  assert.equal(core.isNewConversationLabel("开启新对话"), true);
   assert.equal(core.isNewConversationLabel("发起对话"), true);
   assert.equal(core.isNewConversationLabel("新建对话\n⌘ K"), true);
   assert.equal(core.isNewConversationLabel("新建新对话"), false);

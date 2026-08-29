@@ -9,7 +9,7 @@ const SURFACES = Object.freeze({
   }),
   deepseek_web: Object.freeze({
     origin: "https://chat.deepseek.com",
-    pageSignatureVersion: "deepseek-web-signature@1-visible-page",
+    pageSignatureVersion: "deepseek-web-signature@2-visible-page",
   }),
 });
 

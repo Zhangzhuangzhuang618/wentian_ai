@@ -181,7 +181,20 @@ test("DeepSeek 聊天回答生成独立 Surface 草稿并通过严格契约", ()
     pageTitle: "DeepSeek",
     observedAt: "2026-08-29T10:00:00.000Z",
     answerText: fixture,
-    visibleLinks: [{ url: "https://example.com/source", label: "示例信源" }],
+    visibleLinks: [
+      {
+        url: "http://www.gzbm.com/bianmin/9151.html",
+        label: "-1",
+      },
+      {
+        url: "http://www.gzbm.com/bianmin/9151.html",
+        label: "重复序号",
+      },
+      {
+        url: "https://m.sohu.com/a/example",
+        label: "-2",
+      },
+    ],
     selectedRegionScreenshotDataUrl: "data:image/png;base64,AA==",
   });
 
@@ -190,6 +203,12 @@ test("DeepSeek 聊天回答生成独立 Surface 草稿并通过严格契约", ()
   assert.equal(
     payload.visible_metadata.page_origin,
     "https://chat.deepseek.com",
+  );
+  assert.deepEqual(
+    JSON.parse(
+      JSON.stringify(payload.visible_citations.map((citation) => citation.url)),
+    ),
+    ["http://www.gzbm.com/bianmin/9151.html", "https://m.sohu.com/a/example"],
   );
   assert.doesNotThrow(() => browserCaptureDraftSchema.parse(payload));
 });

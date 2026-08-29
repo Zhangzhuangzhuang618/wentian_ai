@@ -18,7 +18,7 @@ test("DeepSeek Web 适配器使用独立 Surface 和页面签名", () => {
   );
   assert.equal(
     DEEPSEEK_WEB_ADAPTER_MANIFEST.pageSignatureVersion,
-    "deepseek-web-signature@1-visible-page",
+    "deepseek-web-signature@2-visible-page",
   );
 });
 

@@ -86,7 +86,7 @@ test("DeepSeek 任务返回独立官网页面签名且使用独立自动化门�
   assert.equal(result.expectedPageOrigin, "https://chat.deepseek.com");
   assert.equal(
     result.pageSignatureVersion,
-    "deepseek-web-signature@1-visible-page",
+    "deepseek-web-signature@2-visible-page",
   );
 });
 

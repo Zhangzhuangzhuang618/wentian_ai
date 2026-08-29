@@ -14,7 +14,7 @@ export const DEEPSEEK_WEB_ADAPTER_MANIFEST = Object.freeze({
   productLabel: "DeepSeek 网页版" as const,
   allowedPageOrigin: "https://chat.deepseek.com" as const,
   adapterVersion: "deepseek-web@1-visible-page" as const,
-  pageSignatureVersion: "deepseek-web-signature@1-visible-page" as const,
+  pageSignatureVersion: "deepseek-web-signature@2-visible-page" as const,
   status: "active" as const,
   automationMode: "attended" as const,
   supportedAutomationModes: Object.freeze(["attended", "automated"] as const),
