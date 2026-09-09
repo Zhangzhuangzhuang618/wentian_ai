@@ -188,6 +188,54 @@ test("删除运行缺少CSRF时失败关闭", async () => {
   });
 });
 
+test("检索词洞察接口按项目鉴权并导出真实Excel工作簿", async () => {
+  const fixture = await createFixture();
+  const server = createWentianApiServer({
+    version: "0.0.0-test",
+    standaloneConsumerObservationApi: fixture.options,
+  });
+  await withServer(server, async (baseUrl) => {
+    const unauthorized = await fetch(
+      `${baseUrl}/api/v1/scopes/${ids.scope}/visible-search-keywords`,
+    );
+    assert.equal(unauthorized.status, 401);
+
+    const headers = { cookie: `wentian_session=${sessionToken}` };
+    const report = await fetch(
+      `${baseUrl}/api/v1/scopes/${ids.scope}/visible-search-keywords?surface_code=doubao_web&industry=%E6%90%AC%E5%AE%B6`,
+      { headers },
+    );
+    assert.equal(report.status, 200);
+    assert.match(report.headers.get("content-type") ?? "", /application\/json/);
+    const reportBody = (await report.json()) as {
+      readonly scope_id: string;
+      readonly summary: {
+        readonly confirmed_sample_count: number;
+        readonly unique_keyword_count: number;
+      };
+    };
+    assert.equal(reportBody.scope_id, ids.scope);
+    assert.equal(reportBody.summary.confirmed_sample_count, 0);
+    assert.equal(reportBody.summary.unique_keyword_count, 0);
+
+    const workbook = await fetch(
+      `${baseUrl}/api/v1/scopes/${ids.scope}/visible-search-keywords.xlsx`,
+      { headers },
+    );
+    assert.equal(workbook.status, 200);
+    assert.match(
+      workbook.headers.get("content-type") ?? "",
+      /application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/,
+    );
+    assert.match(
+      workbook.headers.get("content-disposition") ?? "",
+      /attachment; filename\*=UTF-8''/,
+    );
+    const bytes = new Uint8Array(await workbook.arrayBuffer());
+    assert.deepEqual([...bytes.slice(0, 2)], [0x50, 0x4b]);
+  });
+});
+
 async function createFixture() {
   const snapshot = createQuerySetSnapshot({
     id: ids.snapshot,

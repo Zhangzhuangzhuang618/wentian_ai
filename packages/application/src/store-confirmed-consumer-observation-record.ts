@@ -142,6 +142,9 @@ export function buildConfirmedConsumerObservationRecord(
     answerText: input.artifact.answerText,
     visibleCitations: input.artifact.visibleCitations,
     visibleMetadata: input.artifact.visibleMetadata,
+    ...(Object.hasOwn(input.artifact, "visibleSearchTrace")
+      ? { visibleSearchTrace: input.artifact.visibleSearchTrace }
+      : {}),
     screenshotMediaAssetId: input.artifact.screenshotMediaAssetId,
     sanitizedDomObjectKey: input.artifact.sanitizedDomObjectKey,
     adapterVersion: input.artifact.adapterVersion,

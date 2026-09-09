@@ -63,6 +63,7 @@ import {
   standaloneRejectTaskInputSchema,
   standaloneSourceRankingResponseSchema,
   standaloneTerminalTaskResponseSchema,
+  visibleSearchKeywordInsightsResponseSchema,
   getConsumerWebSurface,
 } from "@wentian/contracts";
 import {
@@ -87,6 +88,11 @@ import {
   DoubaoAutomationPreflightService,
   type ConsumerAutomationSettingsReader,
 } from "./doubao-automation-preflight.ts";
+import {
+  buildVisibleSearchKeywordInsights,
+  buildVisibleSearchKeywordWorkbook,
+  type VisibleSearchKeywordInsightFilters,
+} from "./visible-search-keyword-insights.ts";
 
 const SESSION_COOKIE = "wentian_session";
 const JSON_BODY_LIMIT = 21 * 1_024 * 1_024;
@@ -745,6 +751,19 @@ export function createStandaloneConsumerObservationApiHandler(
               observed_url: citation.observedUrl,
               resolution: citation.resolution,
             })),
+            ...(artifact.visibleSearchTrace
+              ? {
+                  visible_search_trace: {
+                    status: artifact.visibleSearchTrace.status,
+                    summary_text: artifact.visibleSearchTrace.summaryText,
+                    declared_keyword_count:
+                      artifact.visibleSearchTrace.declaredKeywordCount,
+                    keywords: artifact.visibleSearchTrace.keywords,
+                    declared_reference_count:
+                      artifact.visibleSearchTrace.declaredReferenceCount,
+                  },
+                }
+              : {}),
             visible_metadata: {
               product_label: artifact.visibleMetadata.productLabel,
               surface_model_label: artifact.visibleMetadata.surfaceModelLabel,
@@ -966,7 +985,7 @@ export function createStandaloneConsumerObservationApiHandler(
             {
               task_version: input.task_version,
               screenshot_media_asset_id: assetId,
-              adapter_version: manifest.adapterVersion,
+              adapter_version: surface.adapterVersion,
               reviewed_session_metadata: input.reviewed_session_metadata,
             },
           );
@@ -984,6 +1003,19 @@ export function createStandaloneConsumerObservationApiHandler(
               observedUrl: citation.observed_url,
               resolution: citation.resolution,
             })),
+            ...(submission.visible_search_trace
+              ? {
+                  visibleSearchTrace: {
+                    status: submission.visible_search_trace.status,
+                    summaryText: submission.visible_search_trace.summary_text,
+                    declaredKeywordCount:
+                      submission.visible_search_trace.declared_keyword_count,
+                    keywords: submission.visible_search_trace.keywords,
+                    declaredReferenceCount:
+                      submission.visible_search_trace.declared_reference_count,
+                  },
+                }
+              : {}),
             visibleMetadata: {
               productLabel: submission.visible_metadata.product_label,
               surfaceModelLabel:
@@ -1000,7 +1032,7 @@ export function createStandaloneConsumerObservationApiHandler(
               observedAt: submission.visible_metadata.observed_at,
             },
             screenshotMediaAssetId: assetId,
-            adapterVersion: manifest.adapterVersion,
+            adapterVersion: surface.adapterVersion,
             createdAt: capturedAt,
           });
           const savedTask = await workflow.submitCapture(principal, {
@@ -1349,12 +1381,104 @@ export function createStandaloneConsumerObservationApiHandler(
         return true;
       }
 
+      const visibleSearchKeywordMatch = path.match(
+        /^\/api\/v1\/scopes\/([0-9a-f-]{36})\/visible-search-keywords(\.xlsx)?$/,
+      );
+      if (visibleSearchKeywordMatch && request.method === "GET") {
+        const session = await requireSession(request, options.localAccess);
+        const principal = toPrincipal(session.user);
+        const scopeId = visibleSearchKeywordMatch[1]!;
+        requireScope(principal, scopeId);
+        const report = await loadVisibleSearchKeywordInsights(
+          options,
+          scopeId,
+          requestUrl,
+        );
+        if (visibleSearchKeywordMatch[2]) {
+          const workbook = await buildVisibleSearchKeywordWorkbook(report);
+          writeXlsx(
+            response,
+            workbook,
+            `问天-页面可见检索词-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        } else {
+          writeJson(
+            response,
+            200,
+            visibleSearchKeywordInsightsResponseSchema.parse(report),
+          );
+        }
+        return true;
+      }
+
       return false;
     } catch (error) {
       writeConsumerError(response, error, browserExtensionRequest);
       return true;
     }
   };
+}
+
+async function loadVisibleSearchKeywordInsights(
+  options: StandaloneConsumerObservationApiOptions,
+  scopeId: string,
+  requestUrl: URL,
+) {
+  const runId = readOptionalQueryValue(requestUrl, "run_id", 36);
+  if (
+    runId &&
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      runId,
+    )
+  ) {
+    throw new Error("INVALID_REQUEST");
+  }
+  const surfaceCode = readOptionalQueryValue(requestUrl, "surface_code", 80);
+  if (surfaceCode && !getConsumerWebSurface(surfaceCode)) {
+    throw new Error("INVALID_REQUEST");
+  }
+  const filters: VisibleSearchKeywordInsightFilters = {
+    runId,
+    surfaceCode,
+    industry: readOptionalQueryValue(requestUrl, "industry", 80),
+    region: readOptionalQueryValue(requestUrl, "region", 120),
+    query: readOptionalQueryValue(requestUrl, "query", 200),
+  };
+  const runs = (await options.observations.listRunsByScope(scopeId)).filter(
+    (run) =>
+      run.experimentKind === "natural_answer" &&
+      (!filters.runId || run.id === filters.runId),
+  );
+  if (filters.runId && runs.length === 0) {
+    throw new Error("RESOURCE_NOT_FOUND");
+  }
+  const contexts = await Promise.all(
+    runs.map(async (run) => {
+      const [snapshot, surface, records] = await Promise.all([
+        options.snapshots.findById(scopeId, run.querySetSnapshotId),
+        options.surfaces.findById(run.surfaceProfileVersionId),
+        options.observations.listByRun(scopeId, run.id),
+      ]);
+      if (!snapshot || !surface) {
+        throw new Error("RESOURCE_NOT_FOUND");
+      }
+      return { run, snapshot, surface, records };
+    }),
+  );
+  return buildVisibleSearchKeywordInsights({ scopeId, contexts, filters });
+}
+
+function readOptionalQueryValue(
+  requestUrl: URL,
+  name: string,
+  maxLength: number,
+): string | null {
+  const value = requestUrl.searchParams.get(name)?.trim() ?? "";
+  if (!value) return null;
+  if (value.length > maxLength) {
+    throw new Error("INVALID_REQUEST");
+  }
+  return value;
 }
 
 function selectDisplayOrigin(
@@ -1709,4 +1833,19 @@ function writeJson(
     "content-type": "application/json; charset=utf-8",
   });
   response.end(JSON.stringify(body));
+}
+
+function writeXlsx(
+  response: ServerResponse,
+  body: Buffer,
+  fileName: string,
+): void {
+  response.writeHead(200, {
+    "cache-control": "no-store",
+    "content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    "content-length": body.byteLength,
+    "content-type":
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  response.end(body);
 }

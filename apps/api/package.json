@@ -10,6 +10,7 @@
     "@wentian/consumer-qianwen-web": "workspace:*",
     "@wentian/contracts": "workspace:*",
     "@wentian/domain": "workspace:*",
-    "@wentian/infrastructure": "workspace:*"
+    "@wentian/infrastructure": "workspace:*",
+    "exceljs": "4.4.0"
   }
 }

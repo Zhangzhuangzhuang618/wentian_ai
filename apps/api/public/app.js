@@ -21,6 +21,9 @@ const state = {
   geoConnectors: [],
   geoBindings: [],
   generatedQuestions: [],
+  workspaceView: "experiment",
+  activePanelId: "questions-panel",
+  keywordInsights: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -91,6 +94,32 @@ function bindEvents() {
   );
   $("#scope-deletion-form").addEventListener("submit", deleteScope);
   $("#refresh-button").addEventListener("click", refreshProject);
+  $("#show-experiment-workspace").addEventListener("click", () =>
+    showPanel(state.activePanelId),
+  );
+  $("#show-keyword-insights").addEventListener("click", () =>
+    showKeywordInsights(),
+  );
+  $("#refresh-keyword-insights").addEventListener("click", () =>
+    loadKeywordInsights(),
+  );
+  $("#apply-keyword-filters").addEventListener("click", () =>
+    loadKeywordInsights(),
+  );
+  $("#clear-keyword-filters").addEventListener(
+    "click",
+    clearKeywordInsightFilters,
+  );
+  $("#export-keyword-insights").addEventListener(
+    "click",
+    exportKeywordInsights,
+  );
+  $("#keyword-query-filter").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void loadKeywordInsights();
+    }
+  });
   $("#snapshot-form").addEventListener("submit", createSnapshot);
   $("#generate-industry-questions").addEventListener(
     "click",
@@ -584,6 +613,7 @@ function refreshScopeSelector() {
 async function selectScope(scopeId) {
   state.scopeId = scopeId;
   state.activeRunId = null;
+  state.keywordInsights = null;
   state.deletionJob = null;
   $("#empty-project").classList.add("hidden");
   const scope = state.scopes.find((item) => item.id === scopeId);
@@ -701,6 +731,9 @@ async function refreshProject() {
     state.catalog = catalog;
     renderSettings();
     renderCatalog();
+    if (state.workspaceView === "keywords") {
+      await loadKeywordInsights();
+    }
     if (
       state.activeRunId &&
       catalog.runs.some((run) => run.id === state.activeRunId)
@@ -987,6 +1020,16 @@ function renderRunSelectors() {
     $("#comparison-natural"),
     completedNatural.map((run) => [run.id, runLabel(run)]),
     "暂无已完成运行",
+  );
+  replaceOptions(
+    $("#keyword-run-filter"),
+    [
+      ["__all__", "全部自然回答运行"],
+      ...state.catalog.runs
+        .filter((run) => run.experiment_kind === "natural_answer")
+        .map((run) => [run.id, runLabel(run)]),
+    ],
+    "暂无自然回答运行",
   );
   renderComparisonSelectors();
   if (!state.activeRunId) renderTaskRunContext();
@@ -1444,6 +1487,7 @@ async function toggleTaskPreview(task, item, button) {
       ),
       element("pre", null, preview.answer_text),
     );
+    panel.append(renderTaskVisibleSearchTrace(preview.visible_search_trace));
     if (preview.visible_citations.length) {
       const links = element("ol", "task-preview-links");
       for (const citation of preview.visible_citations) {
@@ -1467,6 +1511,52 @@ async function toggleTaskPreview(task, item, button) {
   } finally {
     button.disabled = false;
   }
+}
+
+function renderTaskVisibleSearchTrace(trace) {
+  const section = element("section", "task-search-trace");
+  const heading = element("div", "task-search-trace-heading");
+  heading.append(
+    element("strong", null, "页面可见检索轨迹"),
+    element(
+      "span",
+      `trace-status ${trace?.status ?? "not_collected"}`,
+      visibleSearchTraceStatusText(trace?.status ?? "not_collected"),
+    ),
+  );
+  section.append(heading);
+  if (!trace) {
+    section.append(
+      element(
+        "p",
+        "tiny",
+        "该历史采样发生时尚未采集这一字段；系统不会从回答或引用反推。",
+      ),
+    );
+    return section;
+  }
+  if (trace.summary_text) {
+    section.append(element("p", "trace-summary", trace.summary_text));
+  }
+  if (trace.keywords.length) {
+    const chips = element("div", "keyword-chip-list");
+    for (const keyword of trace.keywords) {
+      chips.append(element("span", null, keyword.text));
+    }
+    section.append(chips);
+  } else {
+    section.append(
+      element("p", "tiny", "本次页面没有可用于统计的可见检索词。"),
+    );
+  }
+  section.append(
+    element(
+      "p",
+      "tiny",
+      `页面声明 ${trace.declared_keyword_count} 个检索词、${trace.declared_reference_count ?? "未声明"} 篇参考资料；不代表平台内部真实搜索行为。`,
+    ),
+  );
+  return section;
 }
 
 async function confirmAllTasks() {
@@ -1851,9 +1941,12 @@ async function renderRunReport(route) {
 }
 
 async function renderNaturalReportPage(run) {
-  const taskResult = await api(
-    `/api/v1/scopes/${state.scopeId}/runs/${run.id}/tasks`,
-  );
+  const [taskResult, keywordReport] = await Promise.all([
+    api(`/api/v1/scopes/${state.scopeId}/runs/${run.id}/tasks`),
+    api(
+      `/api/v1/scopes/${state.scopeId}/visible-search-keywords?run_id=${encodeURIComponent(run.id)}`,
+    ),
+  ]);
   const questions = uniqueQuestions(taskResult.tasks);
   const rankings = await Promise.all(
     questions.map((question) =>
@@ -1919,7 +2012,139 @@ async function renderNaturalReportPage(run) {
       emptyText: "当前运行没有问题数据。",
     }),
   );
-  body.append(charts, renderNaturalQuestionSummary(model.questions));
+  body.append(
+    charts,
+    renderReportKeywordInsights(run, keywordReport),
+    renderNaturalQuestionSummary(model.questions),
+  );
+}
+
+function renderReportKeywordInsights(run, report) {
+  const section = element("section", "report-keyword-section");
+  const heading = element("div", "report-section-heading");
+  const headingCopy = element("div");
+  headingCopy.append(
+    element("h2", null, "页面可见检索词"),
+    element(
+      "p",
+      null,
+      "仅统计已确认且轨迹完整的采样；同一采样内相同词只计一次。",
+    ),
+  );
+  const exportButton = buttonElement("导出本运行 Excel", "secondary", () => {
+    const link = document.createElement("a");
+    link.href = `/api/v1/scopes/${state.scopeId}/visible-search-keywords.xlsx?run_id=${encodeURIComponent(run.id)}`;
+    link.download = "";
+    document.body.append(link);
+    link.click();
+    link.remove();
+  });
+  heading.append(headingCopy, exportButton);
+  section.append(heading);
+
+  const summary = report.summary;
+  section.append(
+    reportMetricGrid([
+      [
+        "完整检索轨迹",
+        `${summary.complete_trace_count}/${summary.confirmed_sample_count}`,
+        "完整/已确认采样",
+      ],
+      [
+        "检索词出现",
+        String(summary.keyword_occurrence_count),
+        "按采样内去重后累计",
+      ],
+      ["独立检索词", String(summary.unique_keyword_count), "不合并同义词"],
+      [
+        "未进入统计",
+        String(
+          summary.partial_trace_count +
+            summary.not_present_trace_count +
+            summary.not_collected_trace_count,
+        ),
+        "不完整、未显示或当时未采集",
+      ],
+    ]),
+  );
+
+  const grid = element("div", "report-chart-grid");
+  grid.append(
+    horizontalBarChart({
+      title: "检索词出现次数 Top 10",
+      description: "同一检索词跨采样出现时逐次累计",
+      items: report.keywords.slice(0, 10).map((item) => ({
+        label: item.keyword,
+        value: item.sample_occurrence_count,
+        detail: `${item.question_count}个问题 · ${item.run_count}次运行`,
+      })),
+      tone: "accent",
+      emptyText: "当前运行没有完整的页面可见检索轨迹。",
+    }),
+    renderReportKeywordSampleSummary(report.samples),
+  );
+  section.append(grid);
+  return section;
+}
+
+function renderReportKeywordSampleSummary(samples) {
+  const section = element(
+    "section",
+    "report-chart-card keyword-sample-summary-card",
+  );
+  const heading = element("div", "report-section-heading");
+  heading.append(
+    element("h2", null, "单问题检索轨迹"),
+    element("p", null, "展开查看原问题、页面可见检索词和参考资料数量。"),
+  );
+  section.append(heading);
+  if (!samples.length) {
+    section.append(emptyInline("当前运行没有已确认采样。"));
+    return section;
+  }
+  const list = element("div", "report-keyword-sample-list");
+  for (const sample of samples) {
+    const item = document.createElement("details");
+    item.className = "report-keyword-sample";
+    const summary = document.createElement("summary");
+    summary.append(
+      element("span", null, sample.query_text),
+      element(
+        "small",
+        null,
+        `${visibleSearchTraceStatusText(sample.trace_status)} · ${sample.keywords.length}个词`,
+      ),
+    );
+    const body = element("div", "report-keyword-sample-body");
+    if (sample.keywords.length) {
+      const chips = element("div", "keyword-chip-list");
+      for (const keyword of sample.keywords) {
+        chips.append(element("span", null, keyword.text));
+      }
+      body.append(chips);
+    } else {
+      body.append(
+        element(
+          "p",
+          "tiny",
+          sample.trace_status === "not_collected"
+            ? "该历史采样当时未采集检索轨迹。"
+            : "页面没有可统计的可见检索词。",
+        ),
+      );
+    }
+    body.append(
+      element(
+        "p",
+        "tiny",
+        `第${sample.sample_index}次采样 · ${sample.captured_reference_count}条已采集参考资料 · ${formatTime(sample.observed_at)}`,
+      ),
+    );
+    item.append(summary, body);
+    list.append(item);
+  }
+  section.append(list);
+  return section;
 }
 
 async function renderComparisonReportPage(naturalRun, nominationRunId) {
@@ -2253,7 +2478,308 @@ function regionText(value) {
   );
 }
 
+async function showKeywordInsights() {
+  state.workspaceView = "keywords";
+  updateWorkspaceNavigation("keywords");
+  $(".hero-row").classList.add("hidden");
+  $(".step-nav").classList.add("hidden");
+  for (const id of [
+    "questions-panel",
+    "runs-panel",
+    "tasks-panel",
+    "comparison-panel",
+  ]) {
+    $(`#${id}`).classList.add("hidden");
+  }
+  $("#keyword-insights-panel").classList.remove("hidden");
+  $(".topbar-context strong").textContent = "检索词洞察";
+  if (state.scopeId) await loadKeywordInsights();
+}
+
+function updateWorkspaceNavigation(view) {
+  for (const [id, active] of [
+    ["show-experiment-workspace", view === "experiment"],
+    ["show-keyword-insights", view === "keywords"],
+  ]) {
+    const button = $(`#${id}`);
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  }
+}
+
+async function loadKeywordInsights() {
+  if (!state.scopeId) return;
+  const status = $("#keyword-insights-status");
+  const refreshButton = $("#refresh-keyword-insights");
+  const exportButton = $("#export-keyword-insights");
+  refreshButton.disabled = true;
+  exportButton.disabled = true;
+  status.classList.remove("error");
+  status.textContent = "正在汇总已确认采样中的页面可见检索轨迹…";
+  try {
+    const report = await api(keywordInsightsPath());
+    state.keywordInsights = report;
+    renderKeywordInsights(report);
+  } catch (error) {
+    status.classList.add("error");
+    status.textContent = friendlyError(error);
+    $("#keyword-ranking-table").replaceChildren(
+      emptyInline("检索词数据暂时无法读取。"),
+    );
+    $("#keyword-sample-list").replaceChildren(
+      emptyInline("采样证据暂时无法读取。"),
+    );
+  } finally {
+    refreshButton.disabled = false;
+    exportButton.disabled = false;
+  }
+}
+
+function keywordInsightsPath(extension = "") {
+  const url = new URL(
+    `/api/v1/scopes/${state.scopeId}/visible-search-keywords${extension}`,
+    window.location.origin,
+  );
+  const runId = $("#keyword-run-filter").value;
+  const filters = [
+    ["run_id", runId && runId !== "__all__" ? runId : ""],
+    ["surface_code", $("#keyword-surface-filter").value],
+    ["industry", $("#keyword-industry-filter").value.trim()],
+    ["region", $("#keyword-region-filter").value.trim()],
+    ["query", $("#keyword-query-filter").value.trim()],
+  ];
+  for (const [name, value] of filters) {
+    if (value) url.searchParams.set(name, value);
+  }
+  return `${url.pathname}${url.search}`;
+}
+
+function clearKeywordInsightFilters() {
+  setSearchableSelectValue($("#keyword-run-filter"), "__all__");
+  $("#keyword-surface-filter").value = "";
+  $("#keyword-industry-filter").value = "";
+  $("#keyword-region-filter").value = "";
+  $("#keyword-query-filter").value = "";
+  void loadKeywordInsights();
+}
+
+function exportKeywordInsights() {
+  if (!state.scopeId) return;
+  const link = document.createElement("a");
+  link.href = keywordInsightsPath(".xlsx");
+  link.download = "";
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+function renderKeywordInsights(report) {
+  const summary = report.summary;
+  $("#keyword-sample-count").textContent = String(
+    summary.confirmed_sample_count,
+  );
+  $("#keyword-complete-count").textContent =
+    `${summary.complete_trace_count}次轨迹完整`;
+  $("#keyword-occurrence-count").textContent = String(
+    summary.keyword_occurrence_count,
+  );
+  $("#keyword-unique-count").textContent = String(summary.unique_keyword_count);
+  const excludedCount =
+    summary.partial_trace_count +
+    summary.not_present_trace_count +
+    summary.not_collected_trace_count;
+  $("#keyword-excluded-count").textContent = String(excludedCount);
+  $("#keyword-insights-status").textContent =
+    `${summary.complete_trace_count}次完整 · ${summary.partial_trace_count}次不完整 · ${summary.not_present_trace_count}次页面未显示 · ${summary.not_collected_trace_count}次历史未采集`;
+  $("#keyword-ranking-note").textContent = report.keywords.length
+    ? `共 ${report.keywords.length} 个独立检索词`
+    : "当前筛选下暂无可统计检索词";
+  $("#keyword-sample-note").textContent = report.samples.length
+    ? `共 ${report.samples.length} 次已确认采样`
+    : "当前筛选下暂无采样";
+  renderKeywordRankingTable(report.keywords);
+  renderKeywordSampleList(report.samples);
+}
+
+function renderKeywordRankingTable(keywords) {
+  const host = $("#keyword-ranking-table");
+  host.replaceChildren();
+  if (!keywords.length) {
+    host.append(
+      emptyInline(
+        "暂无完整的页面可见检索轨迹。历史采样不会从回答或引用中反推检索词。",
+      ),
+    );
+    return;
+  }
+  const table = element("table", "insights-table keyword-table");
+  const head = element("thead");
+  const headRow = element("tr");
+  for (const label of [
+    "页面可见检索词",
+    "出现次数",
+    "问题数",
+    "运行数",
+    "平台",
+    "最近观察",
+  ]) {
+    headRow.append(element("th", null, label));
+  }
+  head.append(headRow);
+  const body = element("tbody");
+  const maximum = Math.max(
+    ...keywords.map((keyword) => keyword.sample_occurrence_count),
+    1,
+  );
+  for (const keyword of keywords.slice(0, 200)) {
+    const row = element("tr");
+    const keywordCell = element("td", "keyword-value-cell");
+    const label = element("strong", null, keyword.keyword);
+    label.title = keyword.keyword;
+    const meter = document.createElement("progress");
+    meter.max = maximum;
+    meter.value = keyword.sample_occurrence_count;
+    meter.setAttribute(
+      "aria-label",
+      `${keyword.keyword}出现${keyword.sample_occurrence_count}次`,
+    );
+    keywordCell.append(label, meter);
+    row.append(
+      keywordCell,
+      element("td", "numeric", String(keyword.sample_occurrence_count)),
+      element("td", "numeric", String(keyword.question_count)),
+      element("td", "numeric", String(keyword.run_count)),
+      element(
+        "td",
+        null,
+        keyword.platforms.map((value) => surfaceName(value)).join("、"),
+      ),
+      element("td", null, formatTime(keyword.last_seen_at)),
+    );
+    body.append(row);
+  }
+  table.append(head, body);
+  host.append(table);
+  if (keywords.length > 200) {
+    host.append(
+      element(
+        "p",
+        "tiny insights-limit-note",
+        `页面展示前 200 项；Excel 包含当前筛选下全部 ${keywords.length} 项。`,
+      ),
+    );
+  }
+}
+
+function renderKeywordSampleList(samples) {
+  const host = $("#keyword-sample-list");
+  host.replaceChildren();
+  if (!samples.length) {
+    host.append(emptyInline("当前筛选下没有已确认采样。"));
+    return;
+  }
+  for (const sample of samples.slice(0, 80)) {
+    const item = document.createElement("details");
+    item.className = "keyword-sample-item";
+    const summary = element("summary", "keyword-sample-summary");
+    const copy = element("div");
+    copy.append(
+      element("strong", null, sample.query_text),
+      element(
+        "small",
+        null,
+        `${sample.product_label} · 第${sample.sample_index}次采样 · ${formatTime(sample.observed_at)}`,
+      ),
+    );
+    summary.append(
+      copy,
+      element(
+        "span",
+        `trace-status ${sample.trace_status}`,
+        visibleSearchTraceStatusText(sample.trace_status),
+      ),
+    );
+    const body = element("div", "keyword-sample-body");
+    if (sample.summary_text) {
+      body.append(element("p", "trace-summary", sample.summary_text));
+    }
+    if (sample.keywords.length) {
+      const chips = element("div", "keyword-chip-list");
+      for (const keyword of sample.keywords) {
+        chips.append(element("span", null, keyword.text));
+      }
+      body.append(chips);
+    } else {
+      body.append(
+        element(
+          "p",
+          "tiny",
+          sample.trace_status === "not_collected"
+            ? "该历史采样发生时尚未采集页面可见检索词。"
+            : "本次采样没有可用于统计的页面可见检索词。",
+        ),
+      );
+    }
+    const evidenceMeta = element("div", "keyword-evidence-meta");
+    evidenceMeta.append(
+      element("span", null, `运行 ${shortId(sample.run_id)}`),
+      element("span", null, sample.industry ?? "行业未设置"),
+      element("span", null, sample.region ?? "地区未设置"),
+      element(
+        "span",
+        null,
+        `参考资料 ${sample.captured_reference_count}/${sample.declared_reference_count ?? "未声明"}`,
+      ),
+    );
+    body.append(evidenceMeta);
+    if (sample.references.length) {
+      const references = element("ol", "keyword-reference-list");
+      for (const reference of sample.references) {
+        const row = element("li");
+        const link = element("a", null, reference.title || reference.url);
+        link.href = reference.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        const url = element("small", null, reference.url);
+        row.append(link, url);
+        references.append(row);
+      }
+      body.append(references);
+    }
+    item.append(summary, body);
+    host.append(item);
+  }
+  if (samples.length > 80) {
+    host.append(
+      element(
+        "p",
+        "tiny insights-limit-note",
+        `页面展示最近 80 次采样；Excel 包含当前筛选下全部符合默认导出规则的明细。`,
+      ),
+    );
+  }
+}
+
+function visibleSearchTraceStatusText(status) {
+  return (
+    {
+      complete: "轨迹完整",
+      partial: "读取不完整",
+      not_present: "页面未显示",
+      not_collected: "当时未采集",
+    }[status] ?? status
+  );
+}
+
 function showPanel(panelId) {
+  state.workspaceView = "experiment";
+  state.activePanelId = panelId;
+  updateWorkspaceNavigation("experiment");
+  $(".hero-row").classList.remove("hidden");
+  $(".step-nav").classList.remove("hidden");
+  $("#keyword-insights-panel").classList.add("hidden");
+  $(".topbar-context strong").textContent = "实验工作台";
   document.querySelectorAll(".step").forEach((button) => {
     const active = button.dataset.panel === panelId;
     button.classList.toggle("active", active);

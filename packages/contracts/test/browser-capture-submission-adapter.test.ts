@@ -25,6 +25,16 @@ const confirmedDraft = {
       resolution: "known_redirect_target",
     },
   ],
+  visible_search_trace: {
+    status: "complete",
+    summary_text: "搜索 2 个关键词，参考 6 篇资料",
+    declared_keyword_count: 2,
+    keywords: [
+      { position: 1, text: "广州搬家公司推荐" },
+      { position: 2, text: "广州搬家公司避坑" },
+    ],
+    declared_reference_count: 6,
+  },
   source_mention_hints: [
     {
       label: "买购网",
@@ -85,6 +95,10 @@ test("已本地确认草稿可适配为正式观察提交DTO", () => {
       resolution: "known_redirect_target",
     },
   ]);
+  assert.deepEqual(
+    submission.visible_search_trace,
+    confirmedDraft.visible_search_trace,
+  );
 });
 
 test("正式DTO不携带截图Data URL、页面标题或文本信源提示", () => {

@@ -4,7 +4,7 @@
   }
 
   const PAGE_SIGNATURE_VERSIONS = Object.freeze({
-    doubao_web: "doubao-web-signature@6-visible-reference-panel",
+    doubao_web: "doubao-web-signature@7-visible-search-trace",
     qianwen_web: "qianwen-web-signature@2-visible-reference-panel",
     deepseek_web: "deepseek-web-signature@2-visible-page",
   });
@@ -147,10 +147,12 @@
     if (!label || label.length > 200) {
       return null;
     }
+    const visibleSearchSummary = parseVisibleSearchSummary(label);
+    if (visibleSearchSummary) {
+      return visibleSearchSummary.declaredReferenceCount;
+    }
     const match =
-      label.match(
-        /(?:搜索\s*\d+\s*个关键词[，,\s]*)?参考\s*(\d{1,3})\s*篇资料/,
-      ) ??
+      label.match(/参考\s*(\d{1,3})\s*篇资料/) ??
       label.match(/(\d{1,3})\s*篇来源/) ??
       label.match(/参考来源\s*[（(]\s*(\d{1,3})\s*[）)]/);
     if (!match) {
@@ -158,6 +160,62 @@
     }
     const count = Number(match[1]);
     return Number.isInteger(count) && count >= 1 && count <= 100 ? count : null;
+  }
+
+  function parseVisibleSearchSummary(value) {
+    const label = normalizeText(value);
+    if (!label || label.length > 2_000) {
+      return null;
+    }
+    const match = label.match(
+      /搜索\s*(\d{1,3})\s*个关键词[，,\s]*参考\s*(\d{1,3})\s*篇资料/,
+    );
+    if (!match) {
+      return null;
+    }
+    const declaredKeywordCount = Number(match[1]);
+    const declaredReferenceCount = Number(match[2]);
+    if (
+      !Number.isInteger(declaredKeywordCount) ||
+      declaredKeywordCount < 1 ||
+      declaredKeywordCount > 100 ||
+      !Number.isInteger(declaredReferenceCount) ||
+      declaredReferenceCount < 0 ||
+      declaredReferenceCount > 100
+    ) {
+      return null;
+    }
+    return Object.freeze({
+      summaryText: normalizeText(match[0]),
+      declaredKeywordCount,
+      declaredReferenceCount,
+    });
+  }
+
+  function parseVisibleSearchKeywords(value, expectedCount) {
+    if (
+      !Number.isInteger(expectedCount) ||
+      expectedCount < 1 ||
+      expectedCount > 100
+    ) {
+      return Object.freeze([]);
+    }
+    const text = normalizeText(value);
+    if (!text || text.length > 5_000) {
+      return Object.freeze([]);
+    }
+    const keywords = [];
+    const pattern = /“([^”\n]{1,500})”|"([^"\n]{1,500})"/g;
+    for (const match of text.matchAll(pattern)) {
+      const keyword = normalizeText(match[1] ?? match[2]);
+      if (keyword) {
+        keywords.push(keyword);
+      }
+      if (keywords.length >= 100) {
+        break;
+      }
+    }
+    return Object.freeze(keywords.slice(0, expectedCount));
   }
 
   function selectReferencePanelTrigger(candidates) {
@@ -254,6 +312,8 @@
     isNewConversationLabel,
     normalizeText,
     parseReferencePanelLabel,
+    parseVisibleSearchKeywords,
+    parseVisibleSearchSummary,
     selectComposer,
     selectNewAnswer,
     selectReferencePanelLinkChange,

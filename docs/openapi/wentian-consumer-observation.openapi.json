@@ -655,6 +655,58 @@
           "visible_metadata": {
             "$ref": "#/components/schemas/VisibleObservationMetadata"
           },
+          "visible_search_trace": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "status",
+              "summary_text",
+              "declared_keyword_count",
+              "keywords",
+              "declared_reference_count"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["complete", "partial", "not_present"]
+              },
+              "summary_text": {
+                "type": ["string", "null"],
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "declared_keyword_count": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 100
+              },
+              "keywords": {
+                "type": "array",
+                "maxItems": 100,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["position", "text"],
+                  "properties": {
+                    "position": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "text": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  }
+                }
+              },
+              "declared_reference_count": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          },
           "adapter_version": {
             "type": "string",
             "minLength": 1,

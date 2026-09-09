@@ -147,3 +147,6 @@
 - [DeepSeek Web 消费端观察 Surface 决策](./decisions/DEC-WT087-001-DEEPSEEK-WEB-SURFACE.md)
 - [WT-087 接入 DeepSeek Web 消费端观察](./tasks/WT-087-DEEPSEEK-WEB-SURFACE.md)
 - [WT-087 深度自审](./reviews/WT087-DEEP-SELF-REVIEW-2026-08-29.md)
+- [WT-088 页面可见检索轨迹、洞察与 Excel 导出](./tasks/WT-088-VISIBLE-SEARCH-TRACE-AND-INSIGHTS.md)
+- [WT-088 产品、交互与 UI 审核](./reviews/WT088-PRODUCT-INTERACTION-UI-REVIEW-2026-08-31.md)
+- [WT-088 深度自审](./reviews/WT088-DEEP-SELF-REVIEW-2026-08-31.md)

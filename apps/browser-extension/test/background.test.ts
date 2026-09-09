@@ -494,7 +494,7 @@ test("自动提问前必须用一次性接入码向本机问天预检", async ()
       surface_code: "doubao_web",
       prompt: "广州搬家公司哪家好？",
       expected_page_origin: "https://www.doubao.com",
-      page_signature_version: "doubao-web-signature@6-visible-reference-panel",
+      page_signature_version: "doubao-web-signature@7-visible-search-trace",
       token_expires_at: tokenExpiresAt,
       review_required: true,
     },
@@ -633,8 +633,7 @@ test("整批接入码可连续领取下一项并自动完成单题预检", async
         surface_code: "doubao_web",
         prompt: "广州搬家公司哪家好？",
         expected_page_origin: "https://www.doubao.com",
-        page_signature_version:
-          "doubao-web-signature@6-visible-reference-panel",
+        page_signature_version: "doubao-web-signature@7-visible-search-trace",
         token_expires_at: taskTokenExpiresAt,
         review_required: true,
       },

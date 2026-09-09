@@ -41,6 +41,41 @@ test("人工录入证据等级由采集方式派生", () => {
   assert.equal(record.evidenceGrade, "web_confirmed_manual");
 });
 
+test("页面可见检索轨迹保持原词序且完整数量必须一致", () => {
+  const record = createConfirmedConsumerObservationRecord({
+    ...recordInput(),
+    visibleSearchTrace: {
+      status: "complete",
+      summaryText: "搜索 2 个关键词，参考 6 篇资料",
+      declaredKeywordCount: 2,
+      keywords: [
+        { position: 1, text: "广州搬家公司推荐" },
+        { position: 2, text: "广州搬家公司避坑" },
+      ],
+      declaredReferenceCount: 6,
+    },
+  });
+
+  assert.deepEqual(
+    record.visibleSearchTrace?.keywords.map((keyword) => keyword.text),
+    ["广州搬家公司推荐", "广州搬家公司避坑"],
+  );
+  assert.throws(
+    () =>
+      createConfirmedConsumerObservationRecord({
+        ...recordInput(),
+        visibleSearchTrace: {
+          status: "complete",
+          summaryText: "搜索 2 个关键词，参考 6 篇资料",
+          declaredKeywordCount: 2,
+          keywords: [{ position: 1, text: "广州搬家公司推荐" }],
+          declaredReferenceCount: 6,
+        },
+      }),
+    /VISIBLE_SEARCH_COMPLETE_KEYWORD_COUNT_MISMATCH/,
+  );
+});
+
 test("输出白名单不包含截图正文、Cookie或账号字段", () => {
   const record = createConfirmedConsumerObservationRecord({
     ...recordInput(),

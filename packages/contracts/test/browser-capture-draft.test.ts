@@ -23,6 +23,16 @@ const previewCapture = {
       resolution: "known_redirect_target",
     },
   ],
+  visible_search_trace: {
+    status: "complete",
+    summary_text: "搜索 2 个关键词，参考 6 篇资料",
+    declared_keyword_count: 2,
+    keywords: [
+      { position: 1, text: "广州搬家公司推荐" },
+      { position: 2, text: "广州搬家公司避坑" },
+    ],
+    declared_reference_count: 6,
+  },
   source_mention_hints: [
     {
       label: "买购网",
@@ -81,6 +91,31 @@ test("确认状态与确认时间必须一致", () => {
         confirmed_at: "2026-08-22T10:01:00.000Z",
       }),
     /BROWSER_CAPTURE_PREVIEW_CONFIRMATION_TIME_FORBIDDEN/,
+  );
+});
+
+test("完整检索轨迹必须与声明数量一致，未显示状态不得携带内容", () => {
+  assert.throws(
+    () =>
+      browserCaptureDraftSchema.parse({
+        ...previewCapture,
+        visible_search_trace: {
+          ...previewCapture.visible_search_trace,
+          keywords: previewCapture.visible_search_trace.keywords.slice(0, 1),
+        },
+      }),
+    /VISIBLE_SEARCH_COMPLETE_KEYWORD_COUNT_MISMATCH/,
+  );
+  assert.throws(
+    () =>
+      browserCaptureDraftSchema.parse({
+        ...previewCapture,
+        visible_search_trace: {
+          ...previewCapture.visible_search_trace,
+          status: "not_present",
+        },
+      }),
+    /VISIBLE_SEARCH_NOT_PRESENT_MUST_BE_EMPTY/,
   );
 });
 

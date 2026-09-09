@@ -148,6 +148,16 @@ test("合成内部链路从运行创建推进到严格指标响应", async () =>
     visibleCitations: [
       { url: "https://www.example.com/source?utm_source=test", position: 1 },
     ],
+    visibleSearchTrace: {
+      status: "complete",
+      summaryText: "搜索 2 个关键词，参考 1 篇资料",
+      declaredKeywordCount: 2,
+      keywords: [
+        { position: 1, text: "广州搬家公司推荐" },
+        { position: 2, text: "广州搬家公司避坑" },
+      ],
+      declaredReferenceCount: 1,
+    },
     visibleMetadata: {
       productLabel: "豆包网页版",
       surfaceModelLabel: null,
@@ -232,6 +242,10 @@ test("合成内部链路从运行创建推进到严格指标响应", async () =>
 
   const storedRecord = await runs.findRecordById(ids.scope, ids.response);
   assert.ok(storedRecord);
+  assert.deepEqual(
+    storedRecord.visibleSearchTrace?.keywords.map((keyword) => keyword.text),
+    ["广州搬家公司推荐", "广州搬家公司避坑"],
+  );
   assert.equal((await runs.listByResponse(ids.scope, ids.response)).length, 1);
   const batchBuilder = new BuildConsumerObservationMetricSampleBatchService({
     runs,

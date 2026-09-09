@@ -6,6 +6,7 @@ import {
   consumerCollectionMethodSchema,
   consumerSessionConditionsSchema,
   createConsumerObservationInputSchema,
+  visibleSearchTraceInputSchema,
 } from "./consumer-observation.ts";
 import { localQueryInputSchema } from "./scope-query-set.ts";
 import { consumerWebSurfaceCodeSchema } from "./consumer-web-surfaces.ts";
@@ -125,6 +126,7 @@ export const standaloneConsumerTaskPreviewResponseSchema = z
           .strict(),
       )
       .max(100),
+    visible_search_trace: visibleSearchTraceInputSchema.optional(),
     visible_metadata: z
       .object({
         product_label: z.string().min(1),

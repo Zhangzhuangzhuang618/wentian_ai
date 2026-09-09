@@ -53,6 +53,9 @@ export function adaptConfirmedBrowserCaptureDraftToSubmission(
           }
         : {}),
     })),
+    ...(draft.visible_search_trace
+      ? { visible_search_trace: draft.visible_search_trace }
+      : {}),
     visible_metadata: {
       product_label: draft.visible_metadata.product_label,
       surface_model_label:

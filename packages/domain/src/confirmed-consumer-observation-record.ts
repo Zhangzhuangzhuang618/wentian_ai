@@ -8,6 +8,7 @@ import {
 import {
   normalizeConsumerVisibleCitations,
   normalizeConsumerVisibleMetadata,
+  normalizeConsumerVisibleSearchTrace,
   normalizeOptionalText,
   normalizeRequiredText,
   normalizeTimestamp,
@@ -15,6 +16,8 @@ import {
   type ConsumerVisibleCitation,
   type ConsumerVisibleCitationInput,
   type ConsumerVisibleObservationMetadata,
+  type ConsumerVisibleSearchTrace,
+  type ConsumerVisibleSearchTraceInput,
 } from "./consumer-visible-evidence.ts";
 import { assessUnsupportedInternalClaim } from "./unsupported-internal-claim.ts";
 
@@ -44,6 +47,7 @@ export interface ConfirmedConsumerObservationRecord {
   readonly unsupportedInternalClaimAssessmentVersion: string;
   readonly visibleCitations: readonly ConfirmedConsumerObservationCitation[];
   readonly visibleMetadata: ConfirmedConsumerObservationMetadata;
+  readonly visibleSearchTrace?: ConsumerVisibleSearchTrace;
   readonly screenshotMediaAssetId: string;
   readonly sanitizedDomObjectKey: string | null;
   readonly adapterVersion: string;
@@ -64,6 +68,7 @@ export interface CreateConfirmedConsumerObservationRecordInput {
   readonly answerText: string;
   readonly visibleCitations: readonly ConsumerVisibleCitationInput[];
   readonly visibleMetadata: ConfirmedConsumerObservationMetadata;
+  readonly visibleSearchTrace?: ConsumerVisibleSearchTraceInput;
   readonly screenshotMediaAssetId: string;
   readonly sanitizedDomObjectKey?: string | null;
   readonly adapterVersion: string;
@@ -90,6 +95,10 @@ export function createConfirmedConsumerObservationRecord(
   const visibleMetadata = normalizeConsumerVisibleMetadata(
     input.visibleMetadata,
   );
+  const visibleSearchTrace =
+    input.visibleSearchTrace === undefined
+      ? undefined
+      : normalizeConsumerVisibleSearchTrace(input.visibleSearchTrace);
   const confirmedAt = normalizeTimestamp(input.confirmedAt);
   const internalClaimAssessment = assessUnsupportedInternalClaim(
     input.answerText,
@@ -131,6 +140,7 @@ export function createConfirmedConsumerObservationRecord(
       internalClaimAssessment.assessmentVersion,
     visibleCitations,
     visibleMetadata,
+    ...(visibleSearchTrace === undefined ? {} : { visibleSearchTrace }),
     screenshotMediaAssetId: normalizeRequiredText(
       input.screenshotMediaAssetId,
       "INVALID_SCREENSHOT_MEDIA_ASSET_ID",
@@ -164,6 +174,9 @@ export function assertConfirmedConsumerObservationRecordIntegrity(
     answerText: record.answerText,
     visibleCitations: record.visibleCitations,
     visibleMetadata: record.visibleMetadata,
+    ...(Object.hasOwn(record, "visibleSearchTrace")
+      ? { visibleSearchTrace: record.visibleSearchTrace }
+      : {}),
     screenshotMediaAssetId: record.screenshotMediaAssetId,
     sanitizedDomObjectKey: record.sanitizedDomObjectKey,
     adapterVersion: record.adapterVersion,

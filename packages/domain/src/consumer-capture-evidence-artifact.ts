@@ -8,6 +8,7 @@ import type { ConsumerCaptureArtifactBinding } from "./consumer-observation-task
 import {
   normalizeConsumerVisibleCitations,
   normalizeConsumerVisibleMetadata,
+  normalizeConsumerVisibleSearchTrace,
   normalizeOptionalText,
   normalizeRequiredText,
   normalizeTimestamp,
@@ -15,6 +16,8 @@ import {
   type ConsumerVisibleCitation,
   type ConsumerVisibleCitationInput,
   type ConsumerVisibleObservationMetadata,
+  type ConsumerVisibleSearchTrace,
+  type ConsumerVisibleSearchTraceInput,
 } from "./consumer-visible-evidence.ts";
 
 export interface ConsumerCaptureEvidenceArtifact extends ConsumerCaptureArtifactBinding {
@@ -22,6 +25,7 @@ export interface ConsumerCaptureEvidenceArtifact extends ConsumerCaptureArtifact
   readonly answerHash: string;
   readonly visibleCitations: readonly ConsumerVisibleCitation[];
   readonly visibleMetadata: ConsumerVisibleObservationMetadata;
+  readonly visibleSearchTrace?: ConsumerVisibleSearchTrace;
   readonly screenshotMediaAssetId: string;
   readonly sanitizedDomObjectKey: string | null;
   readonly domHash: string | null;
@@ -42,6 +46,7 @@ export interface CreateConsumerCaptureEvidenceArtifactInput {
   readonly answerText: string;
   readonly visibleCitations: readonly ConsumerVisibleCitationInput[];
   readonly visibleMetadata: ConsumerVisibleObservationMetadata;
+  readonly visibleSearchTrace?: ConsumerVisibleSearchTraceInput;
   readonly screenshotMediaAssetId: string;
   readonly sanitizedDomObjectKey?: string | null;
   readonly domHash?: string | null;
@@ -71,6 +76,10 @@ export function createConsumerCaptureEvidenceArtifact(
   const visibleMetadata = normalizeConsumerVisibleMetadata(
     input.visibleMetadata,
   );
+  const visibleSearchTrace =
+    input.visibleSearchTrace === undefined
+      ? undefined
+      : normalizeConsumerVisibleSearchTrace(input.visibleSearchTrace);
   const createdAt = normalizeTimestamp(input.createdAt);
   if (Date.parse(visibleMetadata.observedAt) > Date.parse(createdAt)) {
     throw new Error("CAPTURE_CREATED_BEFORE_OBSERVATION");
@@ -97,6 +106,7 @@ export function createConsumerCaptureEvidenceArtifact(
     answerHash: sha256Utf8(input.answerText),
     visibleCitations,
     visibleMetadata,
+    ...(visibleSearchTrace === undefined ? {} : { visibleSearchTrace }),
     screenshotMediaAssetId: normalizeRequiredText(
       input.screenshotMediaAssetId,
       "INVALID_SCREENSHOT_MEDIA_ASSET_ID",
@@ -143,6 +153,9 @@ export function assertConsumerCaptureEvidenceArtifactIntegrity(
     answerText: artifact.answerText,
     visibleCitations: artifact.visibleCitations,
     visibleMetadata: artifact.visibleMetadata,
+    ...(Object.hasOwn(artifact, "visibleSearchTrace")
+      ? { visibleSearchTrace: artifact.visibleSearchTrace }
+      : {}),
     screenshotMediaAssetId: artifact.screenshotMediaAssetId,
     sanitizedDomObjectKey: artifact.sanitizedDomObjectKey,
     domHash: artifact.domHash,
@@ -192,6 +205,7 @@ function canonicalCaptureReferenceBundle(
     answerHash: artifact.answerHash,
     visibleCitations: artifact.visibleCitations,
     visibleMetadata: artifact.visibleMetadata,
+    visibleSearchTrace: artifact.visibleSearchTrace,
     screenshotMediaAssetId: artifact.screenshotMediaAssetId,
     sanitizedDomObjectKey: artifact.sanitizedDomObjectKey,
     domHash: artifact.domHash,

@@ -4,6 +4,7 @@ import {
   CONSUMER_WEB_SURFACES,
   consumerWebSurfaceCodeSchema,
 } from "./consumer-web-surfaces.ts";
+import { visibleSearchTraceInputSchema } from "./consumer-observation.ts";
 
 export const BROWSER_CAPTURE_DRAFT_SCHEMA_VERSION =
   "wentian-consumer-capture@0-draft" as const;
@@ -85,6 +86,7 @@ export const browserCaptureDraftSchema = z
     confirmed_at: z.iso.datetime({ offset: true }).optional(),
     answer_text: z.string().trim().min(1).max(200_000),
     visible_citations: z.array(browserCaptureVisibleCitationSchema).max(100),
+    visible_search_trace: visibleSearchTraceInputSchema.optional(),
     source_mention_hints: z
       .array(browserCaptureSourceMentionHintSchema)
       .max(100),

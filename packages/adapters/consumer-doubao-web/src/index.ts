@@ -36,7 +36,7 @@ export const DOUBAO_WEB_ADAPTER_MANIFEST: DoubaoWebAdapterManifest =
     productLabel: "豆包网页版",
     allowedPageOrigin: "https://www.doubao.com",
     adapterVersion: "doubao-web@1-attended",
-    pageSignatureVersion: "doubao-web-signature@6-visible-reference-panel",
+    pageSignatureVersion: "doubao-web-signature@7-visible-search-trace",
     status: "active",
     automationMode: "attended",
     supportedAutomationModes: Object.freeze(["attended", "automated"] as const),

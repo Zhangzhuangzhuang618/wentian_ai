@@ -17,7 +17,7 @@ export const CONSUMER_WEB_SURFACES = Object.freeze({
     allowedPageOrigin: "https://www.doubao.com" as const,
     adapterVersion: "doubao-web@1-attended" as const,
     pageSignatureVersion:
-      "doubao-web-signature@6-visible-reference-panel" as const,
+      "doubao-web-signature@7-visible-search-trace" as const,
   }),
   qianwen_web: Object.freeze({
     surfaceCode: "qianwen_web" as const,

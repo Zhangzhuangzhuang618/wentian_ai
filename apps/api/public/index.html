@@ -170,13 +170,29 @@
         <div class="sidebar-scroll">
           <nav class="product-nav" aria-label="产品导航">
             <p class="side-label">工作台</p>
-            <div class="product-nav-item active" aria-current="page">
+            <button
+              id="show-experiment-workspace"
+              class="product-nav-item active"
+              type="button"
+              aria-current="page"
+            >
               <span class="nav-glyph" aria-hidden="true">◉</span>
               <span
                 ><strong>消费端观察</strong
                 ><small>豆包 / 千问 / DeepSeek Web 实验</small></span
               >
-            </div>
+            </button>
+            <button
+              id="show-keyword-insights"
+              class="product-nav-item"
+              type="button"
+            >
+              <span class="nav-glyph keyword" aria-hidden="true">⌕</span>
+              <span
+                ><strong>检索词洞察</strong
+                ><small>页面可见检索词 · Excel 导出</small></span
+              >
+            </button>
           </nav>
 
           <section class="project-switcher" aria-labelledby="project-label">
@@ -997,6 +1013,165 @@
                   </div>
                 </article>
               </div>
+            </section>
+
+            <section
+              id="keyword-insights-panel"
+              class="keyword-insights-view hidden"
+              aria-labelledby="keyword-insights-title"
+            >
+              <header class="insights-hero">
+                <div>
+                  <p class="eyebrow">VISIBLE SEARCH INTELLIGENCE</p>
+                  <h1 id="keyword-insights-title">页面可见检索词洞察</h1>
+                  <p>
+                    汇总 AI 回答页面明确显示的检索词与参考资料，形成可追溯的 GEO
+                    关键词数据。
+                  </p>
+                </div>
+                <div class="insights-hero-actions">
+                  <button
+                    id="refresh-keyword-insights"
+                    class="secondary"
+                    type="button"
+                  >
+                    <span aria-hidden="true">↻</span> 刷新
+                  </button>
+                  <button
+                    id="export-keyword-insights"
+                    class="primary"
+                    type="button"
+                  >
+                    导出 Excel
+                  </button>
+                </div>
+              </header>
+
+              <div class="insights-boundary">
+                <span aria-hidden="true">i</span>
+                <p>
+                  <strong>统计口径：</strong
+                  >仅累计已确认且轨迹完整的页面可见检索词；同一采样内相同词只计一次。它不代表平台内部真实搜索词、抓取频率或隐藏权重。
+                </p>
+              </div>
+
+              <section class="insights-filter-card" aria-label="检索词筛选">
+                <label
+                  ><span>实验运行</span
+                  ><select
+                    id="keyword-run-filter"
+                    data-searchable
+                    data-search-primary-parts="3"
+                    data-search-placeholder="搜索运行、平台或时间"
+                  ></select
+                ></label>
+                <label
+                  ><span>观察对象</span
+                  ><select id="keyword-surface-filter">
+                    <option value="">全部平台</option>
+                    <option value="doubao_web">豆包 Web</option>
+                    <option value="qianwen_web">千问 Web</option>
+                    <option value="deepseek_web">DeepSeek Web</option>
+                  </select></label
+                >
+                <label
+                  ><span>行业</span
+                  ><input
+                    id="keyword-industry-filter"
+                    list="industry-suggestions"
+                    maxlength="80"
+                    placeholder="全部行业"
+                /></label>
+                <label
+                  ><span>地区</span
+                  ><input
+                    id="keyword-region-filter"
+                    list="region-suggestions"
+                    maxlength="120"
+                    placeholder="全部地区"
+                /></label>
+                <label class="keyword-query-filter"
+                  ><span>搜索问题或检索词</span
+                  ><input
+                    id="keyword-query-filter"
+                    type="search"
+                    maxlength="200"
+                    placeholder="输入关键词"
+                /></label>
+                <div class="insights-filter-actions">
+                  <button
+                    id="apply-keyword-filters"
+                    class="primary"
+                    type="button"
+                  >
+                    应用筛选
+                  </button>
+                  <button
+                    id="clear-keyword-filters"
+                    class="text-button"
+                    type="button"
+                  >
+                    清除
+                  </button>
+                </div>
+              </section>
+
+              <section class="insights-metrics" aria-label="检索词汇总">
+                <article>
+                  <span>已确认采样</span
+                  ><strong id="keyword-sample-count">—</strong
+                  ><small id="keyword-complete-count">等待读取</small>
+                </article>
+                <article>
+                  <span>检索词出现</span
+                  ><strong id="keyword-occurrence-count">—</strong
+                  ><small>按采样去重后累计</small>
+                </article>
+                <article>
+                  <span>独立检索词</span
+                  ><strong id="keyword-unique-count">—</strong
+                  ><small>不合并同义词</small>
+                </article>
+                <article>
+                  <span>未进入统计</span
+                  ><strong id="keyword-excluded-count">—</strong
+                  ><small>不完整、未显示或历史未采集</small>
+                </article>
+              </section>
+
+              <div id="keyword-insights-status" class="insights-status">
+                选择筛选条件后读取数据。
+              </div>
+
+              <section class="insights-grid">
+                <article class="insights-card keyword-ranking-card">
+                  <div class="insights-section-heading">
+                    <div>
+                      <p class="panel-kicker">KEYWORD RANKING</p>
+                      <h2>检索词汇总</h2>
+                    </div>
+                    <span id="keyword-ranking-note">按采样出现次数排序</span>
+                  </div>
+                  <div id="keyword-ranking-table" class="insights-table-wrap">
+                    <div class="empty-inline">暂无数据。</div>
+                  </div>
+                </article>
+
+                <article class="insights-card keyword-sample-card">
+                  <div class="insights-section-heading">
+                    <div>
+                      <p class="panel-kicker">EVIDENCE TRAIL</p>
+                      <h2>采样与参考资料</h2>
+                    </div>
+                    <span id="keyword-sample-note"
+                      >可追溯到原问题和完整 URL</span
+                    >
+                  </div>
+                  <div id="keyword-sample-list" class="keyword-sample-list">
+                    <div class="empty-inline">暂无数据。</div>
+                  </div>
+                </article>
+              </section>
             </section>
           </div>
         </main>

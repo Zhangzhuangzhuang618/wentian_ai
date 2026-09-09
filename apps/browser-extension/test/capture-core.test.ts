@@ -19,6 +19,16 @@ interface CaptureCore {
       readonly visible?: boolean;
     }[];
     readonly selectedRegionScreenshotDataUrl: string;
+    readonly visibleSearchTrace?: {
+      readonly status: "complete" | "partial" | "not_present";
+      readonly summaryText: string | null;
+      readonly declaredKeywordCount: number | null;
+      readonly keywords: readonly {
+        readonly position: number;
+        readonly text: string;
+      }[];
+      readonly declaredReferenceCount: number | null;
+    };
   }) => {
     readonly adapter_status: string;
     readonly surface_code: string;
@@ -32,6 +42,16 @@ interface CaptureCore {
       readonly resolution?: string;
     }[];
     readonly source_mention_hints: readonly SourceMentionHint[];
+    readonly visible_search_trace: {
+      readonly status: string;
+      readonly summary_text: string | null;
+      readonly declared_keyword_count: number | null;
+      readonly keywords: readonly {
+        readonly position: number;
+        readonly text: string;
+      }[];
+      readonly declared_reference_count: number | null;
+    };
     readonly screenshot: { readonly scope: string };
     readonly visible_metadata: {
       readonly product_label: string;
@@ -138,6 +158,17 @@ test("只有所选区域内可见的HTTP链接进入引用候选", () => {
       },
     ],
     selectedRegionScreenshotDataUrl: "data:image/png;base64,AA==",
+    visibleSearchTrace: {
+      status: "complete",
+      summaryText: "搜索 3 个关键词，参考 17 篇资料",
+      declaredKeywordCount: 3,
+      keywords: [
+        { position: 1, text: "广州搬家公司推荐 正规 口碑 2026" },
+        { position: 2, text: "广州靠谱搬家公司 收费 避坑要点" },
+        { position: 3, text: "广州搬家公司平台和自营区别" },
+      ],
+      declaredReferenceCount: 17,
+    },
   });
 
   assert.equal(payload.adapter_status, "draft");
@@ -152,7 +183,41 @@ test("只有所选区域内可见的HTTP链接进入引用候选", () => {
   ]);
   assert.equal(payload.screenshot.scope, "selected_visible_region");
   assert.ok(payload.source_mention_hints.length > 0);
+  assert.equal(payload.visible_search_trace.status, "complete");
+  assert.equal(payload.visible_search_trace.keywords.length, 3);
+  assert.equal(payload.visible_search_trace.declared_reference_count, 17);
   assert.doesNotThrow(() => browserCaptureDraftSchema.parse(payload));
+});
+
+test("检索词数量不一致时降级为不完整且未显示时明确记为not_present", () => {
+  const base = {
+    userInitiated: true,
+    pageOrigin: "https://www.doubao.com",
+    pageUrl: "https://www.doubao.com/chat/example",
+    pageTitle: "豆包",
+    observedAt: "2026-08-31T10:00:00.000Z",
+    answerText: fixture,
+    visibleLinks: [],
+    selectedRegionScreenshotDataUrl: "data:image/png;base64,AA==",
+  };
+  const partial = core.createDraftCapturePayload({
+    ...base,
+    visibleSearchTrace: {
+      status: "complete",
+      summaryText: "搜索 3 个关键词，参考 17 篇资料",
+      declaredKeywordCount: 3,
+      keywords: [{ position: 1, text: "广州搬家公司推荐" }],
+      declaredReferenceCount: 17,
+    },
+  });
+  const absent = core.createDraftCapturePayload(base);
+
+  assert.equal(partial.visible_search_trace.status, "partial");
+  assert.equal(absent.visible_search_trace.status, "not_present");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(absent.visible_search_trace.keywords)),
+    [],
+  );
 });
 
 test("千问官网回答生成独立Surface草稿并通过严格契约", () => {

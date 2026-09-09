@@ -31,6 +31,32 @@ test("截图引用变化会改变capture哈希", () => {
   assert.notEqual(first.captureSha256, second.captureSha256);
 });
 
+test("页面可见检索轨迹进入证据哈希且历史无轨迹artifact仍兼容", () => {
+  const legacy = createArtifact();
+  const traced = createArtifact({
+    visibleSearchTrace: {
+      status: "complete",
+      summaryText: "搜索 2 个关键词，参考 6 篇资料",
+      declaredKeywordCount: 2,
+      keywords: [
+        { position: 1, text: "广州搬家公司推荐" },
+        { position: 2, text: "广州搬家公司避坑" },
+      ],
+      declaredReferenceCount: 6,
+    },
+  });
+
+  assert.equal(legacy.visibleSearchTrace, undefined);
+  assert.equal(traced.visibleSearchTrace?.status, "complete");
+  assert.notEqual(legacy.captureSha256, traced.captureSha256);
+  assert.doesNotThrow(() =>
+    assertConsumerCaptureEvidenceArtifactIntegrity(legacy),
+  );
+  assert.doesNotThrow(() =>
+    assertConsumerCaptureEvidenceArtifactIntegrity(traced),
+  );
+});
+
 test("DOM对象键与SHA-256必须成对存在", () => {
   assert.throws(
     () => createArtifact({ sanitizedDomObjectKey: "evidence/dom.html" }),

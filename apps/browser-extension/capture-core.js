@@ -227,6 +227,9 @@
       confirmation_status: "needs_review",
       answer_text: answerText,
       visible_citations: normalizeVisibleCitations(input.visibleLinks, pageUrl),
+      visible_search_trace: normalizeVisibleSearchTrace(
+        input.visibleSearchTrace,
+      ),
       source_mention_hints: extractSourceMentionHints(answerText),
       visible_metadata: {
         product_label: surface.productLabel,
@@ -240,6 +243,50 @@
         media_type: "image/png",
         data_url: input.selectedRegionScreenshotDataUrl,
       },
+    };
+  }
+
+  function normalizeVisibleSearchTrace(input) {
+    if (!input || input.status === "not_present") {
+      return {
+        status: "not_present",
+        summary_text: null,
+        declared_keyword_count: null,
+        keywords: [],
+        declared_reference_count: null,
+      };
+    }
+    const summaryText = normalizeText(input.summaryText).slice(0, 500);
+    const declaredKeywordCount = Number(input.declaredKeywordCount);
+    const declaredReferenceCount = Number(input.declaredReferenceCount);
+    if (
+      !summaryText ||
+      !Number.isInteger(declaredKeywordCount) ||
+      declaredKeywordCount < 1 ||
+      declaredKeywordCount > 100 ||
+      !Number.isInteger(declaredReferenceCount) ||
+      declaredReferenceCount < 0 ||
+      declaredReferenceCount > 100
+    ) {
+      throw new Error("CAPTURE_VISIBLE_SEARCH_TRACE_INVALID");
+    }
+    const keywords = [...(input.keywords ?? [])]
+      .slice(0, 100)
+      .map((keyword, index) => ({
+        position: index + 1,
+        text: normalizeText(keyword?.text ?? keyword).slice(0, 500),
+      }))
+      .filter((keyword) => keyword.text);
+    const status =
+      input.status === "complete" && keywords.length === declaredKeywordCount
+        ? "complete"
+        : "partial";
+    return {
+      status,
+      summary_text: summaryText,
+      declared_keyword_count: declaredKeywordCount,
+      keywords,
+      declared_reference_count: declaredReferenceCount,
     };
   }
 
@@ -293,6 +340,7 @@
     isAllowedPageUrl,
     normalizeHttpUrl,
     normalizeText,
+    normalizeVisibleSearchTrace,
     normalizeVisibleCitations,
   });
 })(globalThis);

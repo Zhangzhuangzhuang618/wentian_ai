@@ -6,6 +6,7 @@ export * from "./consumer-nomination-citation-comparison.ts";
 export * from "./consumer-observation-metrics.ts";
 export * from "./consumer-source-nomination-run-metrics.ts";
 export * from "./browser-capture-draft.ts";
+export * from "./visible-search-keyword-insights.ts";
 export * from "./browser-capture-submission-adapter.ts";
 export * from "./scope-query-set.ts";
 export * from "./source-nomination-metrics.ts";

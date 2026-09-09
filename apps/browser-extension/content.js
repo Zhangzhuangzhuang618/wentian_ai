@@ -576,15 +576,16 @@
       }
       if (readComposerText(composer) !== automationCore.normalizeText(prompt)) {
         composer.textContent = prompt;
-        composer.dispatchEvent(
-          new InputEvent("input", {
-            bubbles: true,
-            composed: true,
-            inputType: "insertText",
-            data: prompt,
-          }),
-        );
       }
+      composer.dispatchEvent(
+        new InputEvent("input", {
+          bubbles: true,
+          composed: true,
+          inputType: "insertText",
+          data: prompt,
+        }),
+      );
+      composer.dispatchEvent(new Event("change", { bubbles: true }));
     }
     await delay(50);
     const actual = automationCore.normalizeText(
@@ -896,19 +897,38 @@
     if (!answerText) {
       throw new Error("CAPTURE_ANSWER_EMPTY");
     }
-    const additionalVisibleLinks = await collectReferencePanelLinks(
+    const referencePanelTrigger = findReferencePanelTrigger(candidate);
+    const initialVisibleSearchTrace = collectVisibleSearchTrace(
+      candidate,
+      referencePanelTrigger,
+    );
+    const referencePanelEvidence = await collectReferencePanelLinks(
       candidate,
       runId,
+      referencePanelTrigger,
     );
-    return { answerText, additionalVisibleLinks };
+    const visibleSearchTrace = selectBetterVisibleSearchTrace(
+      initialVisibleSearchTrace,
+      referencePanelEvidence.visibleSearchTrace,
+    );
+    const additionalVisibleLinks = referencePanelEvidence.links;
+    return { answerText, additionalVisibleLinks, visibleSearchTrace };
   }
 
-  async function collectReferencePanelLinks(answer, runId) {
-    const trigger = findReferencePanelTrigger(answer);
+  async function collectReferencePanelLinks(
+    answer,
+    runId,
+    knownTrigger = null,
+  ) {
+    const trigger = knownTrigger ?? findReferencePanelTrigger(answer);
     if (!trigger) {
-      return [];
+      return {
+        links: [],
+        visibleSearchTrace: collectVisibleSearchTrace(answer, trigger),
+      };
     }
     const before = collectRenderedReferenceLinks();
+    const traceBefore = collectVisibleSearchTrace(answer, trigger);
     trigger.element.click();
     const deadline = Date.now() + 5_000;
     let change = null;
@@ -948,7 +968,10 @@
         await collapseReferencePanel(answer, trigger, cards, runId).catch(
           () => undefined,
         );
-        return links;
+        return {
+          links,
+          visibleSearchTrace: traceBefore,
+        };
       }
       if (change?.direction === "opened") {
         await collapseReferencePanel(
@@ -962,14 +985,122 @@
         `AUTOMATION_REFERENCE_PANEL_INCOMPLETE:${trigger.expectedCount}:${change?.links.length ?? 0}`,
       );
     }
+    const traceAfter =
+      change.direction === "opened"
+        ? await waitForVisibleSearchTrace(answer, trigger, runId)
+        : traceBefore;
     if (change.direction === "opened") {
       await collapseReferencePanel(answer, trigger, change.links, runId);
     }
-    return change.links.map((link) => ({
-      url: link.url,
-      label: link.label,
-      visible: true,
-    }));
+    return {
+      links: change.links.map((link) => ({
+        url: link.url,
+        label: link.label,
+        visible: true,
+      })),
+      visibleSearchTrace: selectBetterVisibleSearchTrace(
+        traceBefore,
+        traceAfter,
+      ),
+    };
+  }
+
+  async function waitForVisibleSearchTrace(answer, trigger, runId) {
+    const deadline = Date.now() + 1_500;
+    let best = collectVisibleSearchTrace(answer, trigger);
+    while (Date.now() < deadline && best.status !== "complete") {
+      if (state.automationRunId !== runId) {
+        throw new Error("AUTOMATION_CANCELLED");
+      }
+      await delay(100);
+      best = selectBetterVisibleSearchTrace(
+        best,
+        collectVisibleSearchTrace(answer, trigger),
+      );
+    }
+    return best;
+  }
+
+  function selectBetterVisibleSearchTrace(left, right) {
+    const rank = { not_present: 0, partial: 1, complete: 2 };
+    const leftScore =
+      (rank[left?.status] ?? -1) * 1_000 + (left?.keywords?.length ?? 0);
+    const rightScore =
+      (rank[right?.status] ?? -1) * 1_000 + (right?.keywords?.length ?? 0);
+    return rightScore > leftScore ? right : left;
+  }
+
+  function collectVisibleSearchTrace(answer, trigger) {
+    const emptyTrace = {
+      status: "not_present",
+      summaryText: null,
+      declaredKeywordCount: null,
+      keywords: [],
+      declaredReferenceCount: null,
+    };
+    if (activeSurface()?.surfaceCode !== "doubao_web" || !trigger) {
+      return emptyTrace;
+    }
+    const summary = automationCore.parseVisibleSearchSummary(trigger.label);
+    if (!summary) {
+      return emptyTrace;
+    }
+    const triggerRect = trigger.element.getBoundingClientRect();
+    const answerRect = answer.getBoundingClientRect();
+    const candidates = [];
+    for (const element of document.querySelectorAll("div, p, span, li")) {
+      if (
+        element === trigger.element ||
+        !isRendered(element) ||
+        state.host?.contains(element)
+      ) {
+        continue;
+      }
+      const rect = element.getBoundingClientRect();
+      if (
+        rect.top < triggerRect.top - 80 ||
+        rect.top > triggerRect.bottom + 420 ||
+        rect.right < answerRect.left - 120 ||
+        rect.left > answerRect.right + 120
+      ) {
+        continue;
+      }
+      const text = automationCore.normalizeText(element.innerText);
+      if (!text || text.length > 5_000) {
+        continue;
+      }
+      const keywords = automationCore.parseVisibleSearchKeywords(
+        text,
+        summary.declaredKeywordCount,
+      );
+      if (keywords.length === 0) {
+        continue;
+      }
+      const verticalDistance = Math.max(0, rect.top - triggerRect.bottom);
+      candidates.push({
+        keywords,
+        score:
+          (keywords.length === summary.declaredKeywordCount ? 10_000 : 0) +
+          keywords.length * 100 -
+          verticalDistance -
+          text.length / 20,
+      });
+    }
+    candidates.sort((left, right) => right.score - left.score);
+    const keywords = candidates[0]?.keywords ?? [];
+    return {
+      status:
+        keywords.length === summary.declaredKeywordCount
+          ? "complete"
+          : "partial",
+      summaryText: summary.summaryText,
+      declaredKeywordCount: summary.declaredKeywordCount,
+      keywords: keywords.map((text, index) => ({
+        position: index + 1,
+        text,
+      })),
+      declaredReferenceCount: summary.declaredReferenceCount,
+    };
   }
 
   async function resolveQianwenReferenceCards(expectedCount, runId) {
@@ -1335,6 +1466,7 @@
         observedAt: new Date().toISOString(),
         answerText,
         visibleLinks,
+        visibleSearchTrace: preparedCapture?.visibleSearchTrace,
         selectedRegionScreenshotDataUrl,
       });
       setHostVisible(true);
@@ -1641,7 +1773,13 @@
     title.textContent = "采集预览";
     const summary = document.createElement("p");
     summary.className = "wt-note";
-    summary.textContent = `可见链接 ${payload.visible_citations.length} 条；文本信源提示 ${payload.source_mention_hints.length} 条。文本提示不会计入引用。`;
+    const searchTraceLabel =
+      payload.visible_search_trace.status === "complete"
+        ? `完整检索词 ${payload.visible_search_trace.keywords.length} 条`
+        : payload.visible_search_trace.status === "partial"
+          ? `检索词读取不完整（${payload.visible_search_trace.keywords.length}/${payload.visible_search_trace.declared_keyword_count}）`
+          : "页面未显示可采集检索词";
+    summary.textContent = `${searchTraceLabel}；可见链接 ${payload.visible_citations.length} 条；文本信源提示 ${payload.source_mention_hints.length} 条。文本提示不会计入引用。`;
 
     const answerLabel = document.createElement("label");
     answerLabel.textContent = "回答正文";
@@ -1658,6 +1796,15 @@
           }`,
       ),
       "所选区域未发现带URL的可见链接。",
+    );
+    const searchKeywords = createTextList(
+      "页面可见检索词（不代表平台内部抓取词）",
+      payload.visible_search_trace.keywords.map(
+        (item) => `${item.position}. ${item.text}`,
+      ),
+      payload.visible_search_trace.status === "not_present"
+        ? "当前页面未显示同类检索词。"
+        : "页面声明了检索词，但本次没有完整读取。",
     );
     const mentions = createTextList(
       "回答文本中的信源提示（非引用）",
@@ -1737,6 +1884,7 @@
       summary,
       answerLabel,
       answer,
+      searchKeywords,
       citations,
       mentions,
       screenshotLabel,

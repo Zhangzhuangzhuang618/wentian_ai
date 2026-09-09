@@ -1,7 +1,7 @@
 const SURFACES = Object.freeze({
   doubao_web: Object.freeze({
     origin: "https://www.doubao.com",
-    pageSignatureVersion: "doubao-web-signature@6-visible-reference-panel",
+    pageSignatureVersion: "doubao-web-signature@7-visible-search-trace",
   }),
   qianwen_web: Object.freeze({
     origin: "https://www.qianwen.com",

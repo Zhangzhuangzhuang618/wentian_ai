@@ -99,6 +99,9 @@ test("独立版首页和静态资源带安全响应头", async () => {
     assert.match(pageText, /id="snapshot-region-filter"/);
     assert.match(pageText, /id="run-industry-filter"/);
     assert.match(pageText, /data-searchable/);
+    assert.match(pageText, /id="show-keyword-insights"/);
+    assert.match(pageText, /id="keyword-insights-panel"/);
+    assert.match(pageText, /id="export-keyword-insights"/);
     assert.equal(script.status, 200);
     const scriptText = await script.text();
     assert.match(scriptText, /loadNaturalRanking/);
@@ -121,6 +124,9 @@ test("独立版首页和静态资源带安全响应头", async () => {
     assert.match(scriptText, /groupTasksByQuestion/);
     assert.match(scriptText, /renderQuestionTaskGroup/);
     assert.match(scriptText, /renderSampleTask/);
+    assert.match(scriptText, /loadKeywordInsights/);
+    assert.match(scriptText, /renderTaskVisibleSearchTrace/);
+    assert.match(scriptText, /renderReportKeywordInsights/);
     assert.match(scriptText, /中断续接只会继续剩余采样/);
     assert.match(scriptText, /共\$\{run\.planned_sample_count\}次采样/);
     assert.match(scriptText, /deleteUnstartedRun/);
@@ -155,6 +161,8 @@ test("独立版首页和静态资源带安全响应头", async () => {
     assert.match(stylesText, /\.task-action-status/);
     assert.match(stylesText, /\.searchable-select-popover/);
     assert.match(stylesText, /\.searchable-select-option/);
+    assert.match(stylesText, /\.keyword-insights-view/);
+    assert.match(stylesText, /\.keyword-chip-list/);
   });
 });
 

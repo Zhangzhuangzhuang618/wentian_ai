@@ -24,6 +24,33 @@ export interface ConsumerVisibleObservationMetadata extends ConsumerSessionCondi
   readonly observedAt: string;
 }
 
+export type ConsumerVisibleSearchTraceStatus =
+  "complete" | "partial" | "not_present";
+
+export interface ConsumerVisibleSearchKeyword {
+  readonly position: number;
+  readonly text: string;
+}
+
+export interface ConsumerVisibleSearchTrace {
+  readonly status: ConsumerVisibleSearchTraceStatus;
+  readonly summaryText: string | null;
+  readonly declaredKeywordCount: number | null;
+  readonly keywords: readonly ConsumerVisibleSearchKeyword[];
+  readonly declaredReferenceCount: number | null;
+}
+
+export interface ConsumerVisibleSearchTraceInput {
+  readonly status: ConsumerVisibleSearchTraceStatus;
+  readonly summaryText?: string | null;
+  readonly declaredKeywordCount?: number | null;
+  readonly keywords?: readonly {
+    readonly position: number;
+    readonly text: string;
+  }[];
+  readonly declaredReferenceCount?: number | null;
+}
+
 export function normalizeConsumerVisibleCitations(
   input: readonly ConsumerVisibleCitationInput[],
 ): readonly ConsumerVisibleCitation[] {
@@ -106,6 +133,78 @@ export function normalizeConsumerVisibleMetadata(
   });
 }
 
+export function normalizeConsumerVisibleSearchTrace(
+  input: ConsumerVisibleSearchTraceInput,
+): ConsumerVisibleSearchTrace {
+  if (
+    input.status !== "complete" &&
+    input.status !== "partial" &&
+    input.status !== "not_present"
+  ) {
+    throw new Error("INVALID_VISIBLE_SEARCH_TRACE_STATUS");
+  }
+  const summaryText = normalizeOptionalText(input.summaryText, 500);
+  const declaredKeywordCount = normalizeOptionalCount(
+    input.declaredKeywordCount,
+    "INVALID_VISIBLE_SEARCH_DECLARED_KEYWORD_COUNT",
+  );
+  const declaredReferenceCount = normalizeOptionalCount(
+    input.declaredReferenceCount,
+    "INVALID_VISIBLE_SEARCH_DECLARED_REFERENCE_COUNT",
+  );
+  const positions = new Set<number>();
+  const keywords = [...(input.keywords ?? [])].map((keyword) => {
+    if (!Number.isInteger(keyword.position) || keyword.position < 1) {
+      throw new Error("INVALID_VISIBLE_SEARCH_KEYWORD_POSITION");
+    }
+    if (positions.has(keyword.position)) {
+      throw new Error("DUPLICATE_VISIBLE_SEARCH_KEYWORD_POSITION");
+    }
+    positions.add(keyword.position);
+    const text = normalizeRequiredText(
+      keyword.text,
+      "INVALID_VISIBLE_SEARCH_KEYWORD_TEXT",
+    );
+    if (text.length > 500) {
+      throw new Error("VISIBLE_SEARCH_KEYWORD_TEXT_TOO_LONG");
+    }
+    return Object.freeze({ position: keyword.position, text });
+  });
+  if (keywords.length > 100) {
+    throw new Error("TOO_MANY_VISIBLE_SEARCH_KEYWORDS");
+  }
+  keywords.sort((left, right) => left.position - right.position);
+  for (const [index, keyword] of keywords.entries()) {
+    if (keyword.position !== index + 1) {
+      throw new Error("VISIBLE_SEARCH_KEYWORD_POSITIONS_NOT_CONTIGUOUS");
+    }
+  }
+
+  if (input.status === "not_present") {
+    if (
+      summaryText !== null ||
+      declaredKeywordCount !== null ||
+      declaredReferenceCount !== null ||
+      keywords.length > 0
+    ) {
+      throw new Error("VISIBLE_SEARCH_NOT_PRESENT_MUST_BE_EMPTY");
+    }
+  } else if (summaryText === null || declaredKeywordCount === null) {
+    throw new Error("VISIBLE_SEARCH_TRACE_SUMMARY_REQUIRED");
+  }
+  if (input.status === "complete" && declaredKeywordCount !== keywords.length) {
+    throw new Error("VISIBLE_SEARCH_COMPLETE_KEYWORD_COUNT_MISMATCH");
+  }
+
+  return Object.freeze({
+    status: input.status,
+    summaryText,
+    declaredKeywordCount,
+    keywords: Object.freeze(keywords),
+    declaredReferenceCount,
+  });
+}
+
 export function normalizeRequiredText(
   value: string,
   errorCode: string,
@@ -165,4 +264,17 @@ function normalizeHttpUrl(value: string): string {
     throw new Error("INVALID_VISIBLE_CITATION_URL");
   }
   return normalized;
+}
+
+function normalizeOptionalCount(
+  value: number | null | undefined,
+  errorCode: string,
+): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (!Number.isInteger(value) || value < 0 || value > 100) {
+    throw new Error(errorCode);
+  }
+  return value;
 }

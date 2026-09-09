@@ -9,6 +9,15 @@ interface AutomationCore {
   readonly isBlankComposerText: (value: string, surfaceCode: string) => boolean;
   readonly isNewConversationLabel: (value: string) => boolean;
   readonly parseReferencePanelLabel: (value: string) => number | null;
+  readonly parseVisibleSearchSummary: (value: string) => {
+    readonly summaryText: string;
+    readonly declaredKeywordCount: number;
+    readonly declaredReferenceCount: number;
+  } | null;
+  readonly parseVisibleSearchKeywords: (
+    value: string,
+    expectedCount: number,
+  ) => readonly string[];
   readonly selectComposer: (candidates: readonly unknown[]) => unknown;
   readonly selectNewAnswer: (
     candidates: readonly unknown[],
@@ -49,8 +58,39 @@ test("页面驱动优先选择可见、可用且靠近页面底部的输入框",
   assert.equal(core.selectComposer([hidden, composer]), composer);
   assert.equal(
     core.PAGE_SIGNATURE_VERSION,
-    "doubao-web-signature@6-visible-reference-panel",
+    "doubao-web-signature@7-visible-search-trace",
   );
+});
+
+test("豆包页面可见检索摘要与引号内检索词按原顺序解析", () => {
+  assert.deepEqual(
+    JSON.parse(
+      JSON.stringify(
+        core.parseVisibleSearchSummary("搜索 3 个关键词，参考 17 篇资料"),
+      ),
+    ),
+    {
+      summaryText: "搜索 3 个关键词，参考 17 篇资料",
+      declaredKeywordCount: 3,
+      declaredReferenceCount: 17,
+    },
+  );
+  assert.deepEqual(
+    JSON.parse(
+      JSON.stringify(
+        core.parseVisibleSearchKeywords(
+          "“广州搬家公司推荐 正规 口碑 2026”，“广州靠谱搬家公司 收费 避坑要点”，“广州搬家公司平台和自营区别”",
+          3,
+        ),
+      ),
+    ),
+    [
+      "广州搬家公司推荐 正规 口碑 2026",
+      "广州靠谱搬家公司 收费 避坑要点",
+      "广州搬家公司平台和自营区别",
+    ],
+  );
+  assert.equal(core.parseVisibleSearchSummary("参考 17 篇资料"), null);
 });
 
 test("参考资料入口只识别有界数量并优先绑定当前回答", () => {
