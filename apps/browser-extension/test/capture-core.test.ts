@@ -6,6 +6,10 @@ import { runInNewContext } from "node:vm";
 import { browserCaptureDraftSchema } from "../../../packages/contracts/src/index.ts";
 
 interface CaptureCore {
+  readonly selectReferenceUrlCandidate: (
+    values: readonly string[],
+    pageUrl: string,
+  ) => string | null;
   readonly createDraftCapturePayload: (input: {
     readonly userInitiated: boolean;
     readonly pageOrigin: string;
@@ -83,6 +87,26 @@ const fixture = await readFile(
 const context = { URL } as Record<string, unknown>;
 runInNewContext(coreSource, context);
 const core = context.WentianCaptureCore as CaptureCore;
+
+test("来源卡片同时包含站内跳转和外部地址时优先采用外部地址", () => {
+  assert.equal(
+    core.selectReferenceUrlCandidate(
+      ["/chat/38438399923815938", "https://www.zgswcn.com/article/123#section"],
+      "https://www.doubao.com/chat/38438399923815938",
+    ),
+    "https://www.zgswcn.com/article/123",
+  );
+});
+
+test("来源地址候选只包含当前豆包对话时不生成引用", () => {
+  assert.equal(
+    core.selectReferenceUrlCandidate(
+      ["/chat/38438399923815938"],
+      "https://www.doubao.com/chat/38438399923815938",
+    ),
+    null,
+  );
+});
 
 test("豆包样本中的来源名称只生成未验证文本提示", () => {
   const hints = core.extractSourceMentionHints(fixture);

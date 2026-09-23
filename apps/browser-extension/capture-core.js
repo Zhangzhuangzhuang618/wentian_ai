@@ -44,6 +44,29 @@
     }
   }
 
+  function selectReferenceUrlCandidate(rawValues, pageUrl) {
+    const page = normalizeHttpUrl(pageUrl, pageUrl);
+    if (!page) return null;
+    const pageOrigin = new URL(page).origin;
+    const candidates = [];
+    const seen = new Set();
+    for (const rawValue of rawValues ?? []) {
+      const url = normalizeHttpUrl(rawValue, page);
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      const parsed = new URL(url);
+      const isCurrentChat =
+        parsed.origin === pageOrigin &&
+        (parsed.pathname === "/chat" || parsed.pathname.startsWith("/chat/"));
+      if (!isCurrentChat) candidates.push(url);
+    }
+    return (
+      candidates.find((url) => new URL(url).origin !== pageOrigin) ??
+      candidates[0] ??
+      null
+    );
+  }
+
   function normalizeVisibleCitations(rawLinks, baseUrl) {
     const seen = new Set();
     const citations = [];
@@ -342,5 +365,6 @@
     normalizeText,
     normalizeVisibleSearchTrace,
     normalizeVisibleCitations,
+    selectReferenceUrlCandidate,
   });
 })(globalThis);

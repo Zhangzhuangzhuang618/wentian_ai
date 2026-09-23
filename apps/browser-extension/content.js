@@ -461,7 +461,10 @@
         return;
       }
       const message = isReferencePanelCaptureError(error)
-        ? `${productName()}显示了参考资料，但未能读取完整的可见链接。本题没有提交，请确认参考资料面板可正常展开后重试。`
+        ? formatReferencePanelCaptureError(
+            error,
+            "本题没有提交，请确认参考资料面板可正常展开后重试。",
+          )
         : error instanceof Error && error.message === "AUTOMATION_TIMEOUT"
           ? "等待回答完成超时，本次未采集。"
           : error instanceof Error &&
@@ -886,7 +889,10 @@
       }
       renderError(
         isReferencePanelCaptureError(error)
-          ? `${productName()}显示了参考资料，但未能读取完整的可见链接。请确认参考资料面板可正常展开后重新选择。`
+          ? formatReferencePanelCaptureError(
+              error,
+              "请确认参考资料面板可正常展开后重新选择。",
+            )
           : "当前回答采集失败，请重新选择。",
       );
     }
@@ -930,22 +936,20 @@
     const before = collectRenderedReferenceLinks();
     const traceBefore = collectVisibleSearchTrace(answer, trigger);
     trigger.element.click();
-    const deadline = Date.now() + 5_000;
-    let change = null;
-    while (Date.now() < deadline) {
-      if (state.automationRunId !== runId) {
-        throw new Error("AUTOMATION_CANCELLED");
-      }
-      change = automationCore.selectReferencePanelLinkChange({
-        before,
-        after: collectRenderedReferenceLinks(),
-        expectedCount: trigger.expectedCount,
-      });
-      if (change?.status === "complete") {
-        break;
-      }
+    let observation = await waitForReferencePanelLinks(before, trigger, runId);
+    if (
+      observation.change?.status !== "complete" &&
+      observation.change?.direction === "closed"
+    ) {
+      trigger.element.click();
       await delay(100);
+      observation = await waitForReferencePanelLinks(
+        observation.after,
+        trigger,
+        runId,
+      );
     }
+    const change = observation.change;
     if (change?.status !== "complete") {
       if (activeSurface()?.surfaceCode === "qianwen_web") {
         const cards = findQianwenReferenceCards(trigger.expectedCount);
@@ -982,7 +986,7 @@
         );
       }
       throw new Error(
-        `AUTOMATION_REFERENCE_PANEL_INCOMPLETE:${trigger.expectedCount}:${change?.links.length ?? 0}`,
+        `AUTOMATION_REFERENCE_PANEL_INCOMPLETE:${trigger.expectedCount}:${observation.links.length}`,
       );
     }
     const traceAfter =
@@ -1003,6 +1007,80 @@
         traceAfter,
       ),
     };
+  }
+
+  async function waitForReferencePanelLinks(before, trigger, runId) {
+    const deadline = Date.now() + 8_000;
+    const linksByUrl = new Map();
+    let after = before;
+    let change = null;
+    let lastRevealAt = 0;
+    while (Date.now() < deadline) {
+      if (state.automationRunId !== runId) {
+        throw new Error("AUTOMATION_CANCELLED");
+      }
+      after = collectRenderedReferenceLinks();
+      change = automationCore.selectReferencePanelLinkChange({
+        before,
+        after,
+        expectedCount: trigger.expectedCount,
+      });
+      for (const link of change?.links ?? []) {
+        if (!linksByUrl.has(link.url)) {
+          linksByUrl.set(link.url, link);
+        }
+      }
+      if (change?.status === "complete") {
+        return { change, after, links: change.links };
+      }
+      const links = [...linksByUrl.values()];
+      if (links.length >= trigger.expectedCount) {
+        return {
+          change: {
+            status: "complete",
+            direction: change?.direction ?? "opened",
+            links: links.slice(0, trigger.expectedCount),
+          },
+          after,
+          links,
+        };
+      }
+      if (change?.direction === "opened" && Date.now() - lastRevealAt >= 400) {
+        revealMoreReferenceLinks(change.links, trigger.element);
+        lastRevealAt = Date.now();
+      }
+      await delay(100);
+    }
+    return { change, after, links: [...linksByUrl.values()] };
+  }
+
+  function revealMoreReferenceLinks(links, trigger) {
+    const target = links.at(-1)?.key ?? trigger;
+    if (!(target instanceof Element)) return;
+    target.scrollIntoView({ block: "end", inline: "nearest" });
+    const scrollContainer = findScrollableAncestor(target);
+    if (scrollContainer) {
+      scrollContainer.scrollTop = Math.min(
+        scrollContainer.scrollHeight,
+        scrollContainer.scrollTop +
+          Math.max(Math.round(scrollContainer.clientHeight * 0.8), 240),
+      );
+    }
+  }
+
+  function findScrollableAncestor(element) {
+    let current = element.parentElement;
+    while (current && current !== document.body) {
+      const style = getComputedStyle(current);
+      if (
+        /(?:auto|scroll|overlay)/.test(style.overflowY) &&
+        current.scrollHeight > current.clientHeight + 8
+      ) {
+        return current;
+      }
+      current = current.parentElement;
+    }
+    return null;
   }
 
   async function waitForVisibleSearchTrace(answer, trigger, runId) {
@@ -1329,31 +1407,27 @@
 
   function collectRenderedReferenceLinks() {
     const candidates = document.querySelectorAll(
-      "a[href], [data-href], [data-url], [data-link], [data-source-url]",
+      "a[href], [data-href], [data-url], [data-link], [data-source-url], [data-click-extra], [data-exposure-extra], [data-log-params]",
     );
     const linksByUrl = new Map();
     for (const element of candidates) {
       if (!isRendered(element) || state.host?.contains(element)) {
         continue;
       }
-      const rawUrl =
-        (element instanceof HTMLAnchorElement ? element.href : "") ||
-        element.getAttribute("href") ||
-        element.getAttribute("data-href") ||
-        element.getAttribute("data-url") ||
-        element.getAttribute("data-link") ||
-        element.getAttribute("data-source-url");
-      const url = core.normalizeHttpUrl(rawUrl, location.href);
+      const rawUrls = [
+        element.getAttribute("data-source-url"),
+        element.getAttribute("data-url"),
+        element.getAttribute("data-href"),
+        element.getAttribute("data-link"),
+        ...readStructuredReferenceUrls(element),
+        element.getAttribute("href"),
+        element instanceof HTMLAnchorElement ? element.href : null,
+      ].filter(Boolean);
+      const url = core.selectReferenceUrlCandidate(rawUrls, location.href);
       if (!url) {
         continue;
       }
       const parsed = new URL(url);
-      if (
-        parsed.origin === location.origin &&
-        (parsed.pathname === "/chat" || parsed.pathname.startsWith("/chat/"))
-      ) {
-        continue;
-      }
       if (!linksByUrl.has(url)) {
         linksByUrl.set(url, {
           key: element,
@@ -1368,6 +1442,52 @@
       }
     }
     return [...linksByUrl.values()];
+  }
+
+  function readStructuredReferenceUrls(element) {
+    const urls = [];
+    for (const attributeName of [
+      "data-click-extra",
+      "data-exposure-extra",
+      "data-log-params",
+    ]) {
+      const rawValue = element.getAttribute(attributeName);
+      if (!rawValue) continue;
+      try {
+        collectStructuredUrlValues(JSON.parse(rawValue), urls, 0, "");
+      } catch {
+        for (const match of rawValue.matchAll(/https?:\/\/[^\s"'<>]+/g)) {
+          urls.push(match[0]);
+        }
+      }
+    }
+    return urls;
+  }
+
+  function collectStructuredUrlValues(value, output, depth, keyHint) {
+    if (depth > 5 || output.length >= 100 || value === null) return;
+    if (typeof value === "string") {
+      const allowedKey =
+        !keyHint || /(?:url|href|link|target|source|schema)/i.test(keyHint);
+      const blockedKey = /(?:image|avatar|icon|cover|logo|thumbnail)/i.test(
+        keyHint,
+      );
+      if (allowedKey && !blockedKey && /^https?:\/\//i.test(value)) {
+        output.push(value);
+      }
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        collectStructuredUrlValues(item, output, depth + 1, keyHint);
+      }
+      return;
+    }
+    if (typeof value === "object") {
+      for (const [key, item] of Object.entries(value)) {
+        collectStructuredUrlValues(item, output, depth + 1, key);
+      }
+    }
   }
 
   async function collapseReferencePanel(answer, trigger, links, runId) {
@@ -1397,6 +1517,14 @@
       error instanceof Error &&
       error.message.startsWith("AUTOMATION_REFERENCE_PANEL_")
     );
+  }
+
+  function formatReferencePanelCaptureError(error, guidance) {
+    const match = error.message.match(
+      /^AUTOMATION_REFERENCE_PANEL_INCOMPLETE:(\d+):(\d+)$/,
+    );
+    const progress = match ? `（已读取 ${match[2]} / ${match[1]} 条）` : "";
+    return `${productName()}显示了参考资料，但未能读取完整的可见链接${progress}。${guidance}`;
   }
 
   function delay(milliseconds) {
