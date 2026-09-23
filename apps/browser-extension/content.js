@@ -1010,8 +1010,8 @@
   }
 
   async function waitForReferencePanelLinks(before, trigger, runId) {
-    const deadline = Date.now() + 8_000;
-    const linksByUrl = new Map();
+    const deadline = Date.now() + 15_000;
+    let observedLinks = [];
     let after = before;
     let change = null;
     let lastRevealAt = 0;
@@ -1025,15 +1025,14 @@
         after,
         expectedCount: trigger.expectedCount,
       });
-      for (const link of change?.links ?? []) {
-        if (!linksByUrl.has(link.url)) {
-          linksByUrl.set(link.url, link);
-        }
-      }
+      observedLinks = core.mergeReferenceLinkObservations(
+        observedLinks,
+        change?.links ?? [],
+      );
       if (change?.status === "complete") {
         return { change, after, links: change.links };
       }
-      const links = [...linksByUrl.values()];
+      const links = observedLinks;
       if (links.length >= trigger.expectedCount) {
         return {
           change: {
@@ -1051,36 +1050,50 @@
       }
       await delay(100);
     }
-    return { change, after, links: [...linksByUrl.values()] };
+    return { change, after, links: observedLinks };
   }
 
   function revealMoreReferenceLinks(links, trigger) {
     const target = links.at(-1)?.key ?? trigger;
     if (!(target instanceof Element)) return;
     target.scrollIntoView({ block: "end", inline: "nearest" });
-    const scrollContainer = findScrollableAncestor(target);
-    if (scrollContainer) {
-      scrollContainer.scrollTop = Math.min(
-        scrollContainer.scrollHeight,
-        scrollContainer.scrollTop +
-          Math.max(Math.round(scrollContainer.clientHeight * 0.8), 240),
+    for (const scrollContainer of findScrollableAncestors(target)) {
+      const maximumScrollTop = Math.max(
+        scrollContainer.scrollHeight - scrollContainer.clientHeight,
+        0,
       );
+      if (scrollContainer.scrollTop >= maximumScrollTop - 4) continue;
+      scrollContainer.scrollTop = Math.min(
+        maximumScrollTop,
+        scrollContainer.scrollTop +
+          Math.max(Math.round(scrollContainer.clientHeight * 0.9), 360),
+      );
+      scrollContainer.dispatchEvent(new Event("scroll"));
     }
   }
 
-  function findScrollableAncestor(element) {
+  function findScrollableAncestors(element) {
+    const candidates = [];
     let current = element.parentElement;
-    while (current && current !== document.body) {
+    while (current) {
       const style = getComputedStyle(current);
       if (
-        /(?:auto|scroll|overlay)/.test(style.overflowY) &&
+        !/(?:visible|clip)/.test(style.overflowY) &&
         current.scrollHeight > current.clientHeight + 8
       ) {
-        return current;
+        candidates.push(current);
       }
       current = current.parentElement;
     }
-    return null;
+    const documentScroller = document.scrollingElement;
+    if (
+      documentScroller instanceof Element &&
+      documentScroller.scrollHeight > documentScroller.clientHeight + 8 &&
+      !candidates.includes(documentScroller)
+    ) {
+      candidates.push(documentScroller);
+    }
+    return candidates;
   }
 
   async function waitForVisibleSearchTrace(answer, trigger, runId) {
@@ -1407,9 +1420,9 @@
 
   function collectRenderedReferenceLinks() {
     const candidates = document.querySelectorAll(
-      "a[href], [data-href], [data-url], [data-link], [data-source-url], [data-click-extra], [data-exposure-extra], [data-log-params]",
+      'a[href], [data-href], [data-url], [data-link], [data-source-url], [data-click-extra], [data-exposure-extra], [data-log-params], [role="link"], [role="button"], button, li, article',
     );
-    const linksByUrl = new Map();
+    const links = [];
     for (const element of candidates) {
       if (!isRendered(element) || state.host?.contains(element)) {
         continue;
@@ -1419,7 +1432,7 @@
         element.getAttribute("data-url"),
         element.getAttribute("data-href"),
         element.getAttribute("data-link"),
-        ...readStructuredReferenceUrls(element),
+        ...readReferenceAttributeUrls(element),
         element.getAttribute("href"),
         element instanceof HTMLAnchorElement ? element.href : null,
       ].filter(Boolean);
@@ -1428,31 +1441,66 @@
         continue;
       }
       const parsed = new URL(url);
-      if (!linksByUrl.has(url)) {
-        linksByUrl.set(url, {
-          key: element,
-          url,
-          label:
-            core.normalizeText(element.innerText) ||
-            core.normalizeText(element.getAttribute("aria-label")) ||
-            core.normalizeText(element.getAttribute("title")) ||
-            parsed.hostname,
-          visible: true,
-        });
+      const key = findReferenceEntryElement(element);
+      const nestedDuplicateIndex = links.findIndex(
+        (item) => item.url === url && item.key.contains(key),
+      );
+      if (nestedDuplicateIndex >= 0) {
+        links.splice(nestedDuplicateIndex, 1);
+      } else if (
+        links.some((item) => item.url === url && key.contains(item.key))
+      ) {
+        continue;
       }
+      links.push({
+        key,
+        url,
+        label:
+          core.normalizeText(element.innerText) ||
+          core.normalizeText(element.getAttribute("aria-label")) ||
+          core.normalizeText(element.getAttribute("title")) ||
+          parsed.hostname,
+        visible: true,
+      });
     }
-    return [...linksByUrl.values()];
+    return links;
   }
 
-  function readStructuredReferenceUrls(element) {
+  function findReferenceEntryElement(element) {
+    let current = element;
+    for (
+      let depth = 0;
+      current && current !== document.body && depth < 6;
+      depth += 1
+    ) {
+      if (current.matches('li, article, [role="listitem"]')) {
+        return current;
+      }
+      const text = core.normalizeText(current.innerText);
+      if (/^\d{1,3}[.、]\s*/.test(text) && text.length <= 5_000) {
+        return current;
+      }
+      current = current.parentElement;
+    }
+    return element;
+  }
+
+  function readReferenceAttributeUrls(element) {
     const urls = [];
-    for (const attributeName of [
-      "data-click-extra",
-      "data-exposure-extra",
-      "data-log-params",
-    ]) {
-      const rawValue = element.getAttribute(attributeName);
-      if (!rawValue) continue;
+    for (const attribute of element.attributes) {
+      const attributeName = attribute.name;
+      const rawValue = attribute.value;
+      if (
+        !rawValue ||
+        /^(?:href|src|srcset|style|class)$/i.test(attributeName) ||
+        !(
+          /(?:url|href|link|target|source|schema|click|exposure|log|track)/i.test(
+            attributeName,
+          ) || /https?:/i.test(rawValue)
+        )
+      ) {
+        continue;
+      }
       try {
         collectStructuredUrlValues(JSON.parse(rawValue), urls, 0, "");
       } catch {

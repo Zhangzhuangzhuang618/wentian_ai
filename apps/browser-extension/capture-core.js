@@ -67,6 +67,22 @@
     );
   }
 
+  function mergeReferenceLinkObservations(existing, observed) {
+    const merged = [...(existing ?? [])];
+    for (const candidate of observed ?? []) {
+      if (
+        merged.some(
+          (item) =>
+            item?.key === candidate?.key && item?.url === candidate?.url,
+        )
+      ) {
+        continue;
+      }
+      merged.push(candidate);
+    }
+    return merged;
+  }
+
   function normalizeVisibleCitations(rawLinks, baseUrl) {
     const seen = new Set();
     const citations = [];
@@ -366,5 +382,6 @@
     normalizeVisibleSearchTrace,
     normalizeVisibleCitations,
     selectReferenceUrlCandidate,
+    mergeReferenceLinkObservations,
   });
 })(globalThis);

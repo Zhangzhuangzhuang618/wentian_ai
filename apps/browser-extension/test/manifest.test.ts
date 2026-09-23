@@ -12,7 +12,7 @@ const implementation = await Promise.all(
 );
 
 test("扩展只申请当前页、脚本注入和千问临时来源标签权限", () => {
-  assert.equal(manifest.version, "0.0.27");
+  assert.equal(manifest.version, "0.0.28");
   assert.deepEqual(manifest.permissions, ["activeTab", "scripting", "tabs"]);
   assert.deepEqual(manifest.host_permissions, [
     "http://127.0.0.1/*",
@@ -60,6 +60,9 @@ test("扩展保留用户选择、本地预览和最终确认步骤", () => {
   assert.match(contentSource, /collectReferencePanelLinks/);
   assert.match(contentSource, /waitForReferencePanelLinks/);
   assert.match(contentSource, /revealMoreReferenceLinks/);
+  assert.match(contentSource, /findScrollableAncestors/);
+  assert.match(contentSource, /mergeReferenceLinkObservations/);
+  assert.match(contentSource, /findReferenceEntryElement/);
   assert.match(contentSource, /selectReferenceUrlCandidate/);
   assert.match(contentSource, /data-click-extra/);
   assert.match(contentSource, /waitForVisibleSearchTrace/);

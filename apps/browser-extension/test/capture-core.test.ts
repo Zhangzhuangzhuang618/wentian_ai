@@ -6,6 +6,10 @@ import { runInNewContext } from "node:vm";
 import { browserCaptureDraftSchema } from "../../../packages/contracts/src/index.ts";
 
 interface CaptureCore {
+  readonly mergeReferenceLinkObservations: (
+    existing: readonly { readonly key: object; readonly url: string }[],
+    observed: readonly { readonly key: object; readonly url: string }[],
+  ) => readonly { readonly key: object; readonly url: string }[];
   readonly selectReferenceUrlCandidate: (
     values: readonly string[],
     pageUrl: string,
@@ -106,6 +110,26 @@ test("来源地址候选只包含当前豆包对话时不生成引用", () => {
     ),
     null,
   );
+});
+
+test("参考资料累计按条目身份计数且保留同地址的不同条目", () => {
+  const reusedCard = {};
+  const duplicateUrlCard = {};
+  const first = { key: reusedCard, url: "https://example.com/one" };
+  const merged = core.mergeReferenceLinkObservations(
+    [first],
+    [
+      first,
+      { key: duplicateUrlCard, url: "https://example.com/one" },
+      { key: reusedCard, url: "https://example.com/two" },
+    ],
+  );
+  assert.equal(merged.length, 3);
+  assert.deepEqual(JSON.parse(JSON.stringify(merged.map((item) => item.url))), [
+    "https://example.com/one",
+    "https://example.com/one",
+    "https://example.com/two",
+  ]);
 });
 
 test("豆包样本中的来源名称只生成未验证文本提示", () => {
