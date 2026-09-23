@@ -153,6 +153,24 @@ test("无会话不能读取项目且非法请求返回400", async () => {
     });
     assert.equal(invalid.status, 400);
     assert.equal((await invalid.json()).error, "INVALID_REQUEST");
+
+    const invalidProjectKey = await fetch(`${baseUrl}/api/v1/scopes`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: `wentian_session=${sessionToken}`,
+        origin: baseUrl,
+        "x-wentian-csrf-token": csrfToken,
+      },
+      body: JSON.stringify({
+        project_key: "bad_key",
+        display_name: "测试项目",
+        industry: "测试",
+        region: "广州",
+      }),
+    });
+    assert.equal(invalidProjectKey.status, 400);
+    assert.equal((await invalidProjectKey.json()).error, "INVALID_PROJECT_KEY");
   });
 });
 

@@ -3366,6 +3366,8 @@ function friendlyError(error) {
       LOCAL_LOGIN_FAILED: "邮箱或密码不正确。",
       LOCAL_SESSION_INVALID: "登录已失效，请重新登录。",
       LOCAL_REAUTH_INVALID: "当前账号密码不正确。",
+      INVALID_PROJECT_KEY:
+        "项目标识仅支持中文、小写英文、数字和连字符，且不能以连字符开头或结尾。",
       SCOPE_DELETE_CONFIRMATION_MISMATCH: "输入的项目标识不一致。",
       SCOPE_VERSION_CONFLICT: "项目状态已经变化，请刷新后重试。",
       SCOPE_DELETION_IN_PROGRESS: "项目删除已经开始，请刷新状态。",

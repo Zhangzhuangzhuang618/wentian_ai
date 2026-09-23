@@ -102,8 +102,30 @@ test("本地访问契约拒绝额外字段和非法项目键", () => {
   );
   assert.throws(() =>
     createStandaloneScopeInputSchema.parse({
-      project_key: "广州搬家",
+      project_key: "bad_key",
       display_name: "广州搬家",
+      industry: "搬家",
+      region: "广州",
     }),
+  );
+});
+
+test("项目标识支持中文并保持删除确认契约一致", () => {
+  assert.equal(
+    createStandaloneScopeInputSchema.parse({
+      project_key: "软装",
+      display_name: "软装行业探索1",
+      industry: "软装",
+      region: "广州",
+    }).project_key,
+    "软装",
+  );
+  assert.equal(
+    requestScopeDeletionInputSchema.parse({
+      project_key: "软装",
+      password: "a-long-owner-password",
+      version: 1,
+    }).project_key,
+    "软装",
   );
 });

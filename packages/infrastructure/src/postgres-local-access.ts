@@ -520,7 +520,11 @@ function normalizeOptionalBusinessLabel(
 
 function normalizeProjectKey(value: string): string {
   const normalized = value.trim();
-  if (!/^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/.test(normalized)) {
+  if (
+    !/^[a-z0-9\p{Script=Han}](?:[a-z0-9\p{Script=Han}-]{0,78}[a-z0-9\p{Script=Han}])?$/u.test(
+      normalized,
+    )
+  ) {
     throw new Error("INVALID_PROJECT_KEY");
   }
   return normalized;

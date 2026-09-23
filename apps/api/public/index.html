@@ -279,12 +279,15 @@
                 ><input id="scope-name" maxlength="120" required
               /></label>
               <label
-                ><span>项目标识</span
+                ><span
+                  >项目标识
+                  <small>支持中文、小写英文、数字和连字符</small></span
                 ><input
                   id="scope-key"
                   maxlength="80"
-                  pattern="[a-z0-9-]+"
-                  placeholder="例如 guangzhou-move"
+                  pattern="[a-z0-9\p{Script=Han}](?:[a-z0-9\p{Script=Han}\-]{0,78}[a-z0-9\p{Script=Han}])?"
+                  placeholder="例如 软装 或 guangzhou-move"
+                  title="支持中文、小写英文、数字和连字符，且不能以连字符开头或结尾"
                   required
               /></label>
               <label

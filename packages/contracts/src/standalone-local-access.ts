@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+const projectKeyPattern =
+  /^[a-z0-9\p{Script=Han}](?:[a-z0-9\p{Script=Han}-]{0,78}[a-z0-9\p{Script=Han}])?$/u;
+
 export const localLoginInputSchema = z
   .object({
     email: z.string().trim().email().max(320),
@@ -29,7 +32,7 @@ export const localSessionResponseSchema = z
 export const standaloneScopeSchema = z
   .object({
     id: z.uuid(),
-    project_key: z.string().regex(/^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/),
+    project_key: z.string().regex(projectKeyPattern),
     display_name: z.string().trim().min(1).max(160),
     industry: z.string().trim().min(1).max(80).nullable(),
     region: z.string().trim().min(1).max(80).nullable(),
@@ -48,12 +51,7 @@ export const standaloneScopeListResponseSchema = z
 
 export const createStandaloneScopeInputSchema = z
   .object({
-    project_key: z
-      .string()
-      .trim()
-      .min(1)
-      .max(80)
-      .regex(/^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/),
+    project_key: z.string().trim().min(1).max(80).regex(projectKeyPattern),
     display_name: z.string().trim().min(1).max(160),
     industry: z.string().trim().min(1).max(80),
     region: z.string().trim().min(1).max(80),
@@ -88,12 +86,7 @@ export const updateConsumerAutomationSettingsInputSchema = z
 
 export const requestScopeDeletionInputSchema = z
   .object({
-    project_key: z
-      .string()
-      .trim()
-      .min(1)
-      .max(80)
-      .regex(/^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/),
+    project_key: z.string().trim().min(1).max(80).regex(projectKeyPattern),
     password: z.string().min(12).max(200),
     version: z.number().int().positive(),
   })

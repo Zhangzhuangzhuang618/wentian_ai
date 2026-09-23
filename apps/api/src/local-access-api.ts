@@ -712,7 +712,9 @@ function normalizeOrigin(value: string): string {
 function writeApiError(response: ServerResponse, error: unknown): void {
   const code =
     error instanceof Error && error.name === "ZodError"
-      ? "INVALID_REQUEST"
+      ? hasValidationPath(error, "project_key")
+        ? "INVALID_PROJECT_KEY"
+        : "INVALID_REQUEST"
       : error instanceof Error
         ? error.message
         : "INTERNAL_ERROR";
@@ -741,6 +743,15 @@ function writeApiError(response: ServerResponse, error: unknown): void {
   writeJson(response, status, {
     error: status === 500 ? "INTERNAL_ERROR" : code,
   });
+}
+
+function hasValidationPath(error: Error, field: string): boolean {
+  const issues = (
+    error as Error & {
+      readonly issues?: readonly { readonly path?: readonly unknown[] }[];
+    }
+  ).issues;
+  return issues?.some((issue) => issue.path?.[0] === field) ?? false;
 }
 
 function writeJson(
